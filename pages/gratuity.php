@@ -162,7 +162,6 @@ if ($subAction === 'view') {
 
 // Calculate Form
 if ($subAction === 'calculate') {
-    $employees = DB::rows("SELECT id, name_en, employee_no, hire_date, basic_salary FROM employees WHERE status IN ('active','terminated') ORDER BY name_en");
     ?>
     <div class="page-header">
       <h1 class="page-title"><i class="fas fa-calculator me-2"></i>Calculate Gratuity</h1>
@@ -175,13 +174,8 @@ if ($subAction === 'calculate') {
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label">Employee</label>
-              <select class="form-select select2" name="employee_id" required>
-                <option value="">Select employee...</option>
-                <?php foreach ($employees as $e): ?>
-                <option value="<?= $e['id'] ?>" data-hire="<?= $e['hire_date'] ?>">
-                  <?= h($e['name_en']) ?> (<?= h($e['employee_no']) ?>) - Hired: <?= fdate($e['hire_date']) ?>
-                </option>
-                <?php endforeach; ?>
+              <select class="form-select select2-ajax" name="employee_id" required data-placeholder="Search employee..." data-status="all">
+                <option value=""></option>
               </select>
             </div>
             <div class="col-md-6">
@@ -201,16 +195,18 @@ if ($subAction === 'calculate') {
 }
 
 // List View
+$gratuityPage = max(1, (int)get('p', 1));
 $gratuityTableExists = DB::row("SHOW TABLES LIKE 'gratuity'") !== null;
-$gratuities = [];
+$gratuities = ['data'=>[], 'last_page'=>0, 'page'=>1, 'from'=>0, 'to'=>0, 'total'=>0];
 if ($gratuityTableExists) {
-    $gratuities = DB::rows("
-        SELECT g.*, e.name_en, e.employee_no, u.name as approved_by_name
-        FROM gratuity g
-        LEFT JOIN employees e ON e.id = g.employee_id
-        LEFT JOIN users u ON u.id = g.approved_by
-        ORDER BY g.created_at DESC
-    ");
+    $gratuities = DB::paginate(
+        "SELECT g.*, e.name_en, e.employee_no, u.name as approved_by_name
+         FROM gratuity g
+         LEFT JOIN employees e ON e.id = g.employee_id
+         LEFT JOIN users u ON u.id = g.approved_by
+         ORDER BY g.created_at DESC",
+        [], $gratuityPage, 50
+    );
 }
 ?>
 <div class="page-header d-flex justify-content-between align-items-start">
@@ -233,7 +229,7 @@ if ($gratuityTableExists) {
         </tr>
       </thead>
       <tbody>
-        <?php foreach ($gratuities as $g): ?>
+        <?php foreach ($gratuities['data'] as $g): ?>
         <tr>
           <td><?= h($g['name_en']) ?> (<?= h($g['employee_no']) ?>)</td>
           <td><?= fdate($g['hire_date']) ?></td>
@@ -246,10 +242,22 @@ if ($gratuityTableExists) {
           </td>
         </tr>
         <?php endforeach; ?>
-        <?php if (empty($gratuities)): ?>
+        <?php if (empty($gratuities['data'])): ?>
         <tr><td colspan="7" class="text-center py-4 text-muted">No gratuity calculations found</td></tr>
         <?php endif; ?>
       </tbody>
     </table>
   </div>
+  <?php if ($gratuities['last_page'] > 1): ?>
+  <div class="card-footer d-flex justify-content-between align-items-center">
+    <small class="text-muted">Showing <?= $gratuities['from'] ?>–<?= $gratuities['to'] ?> of <?= $gratuities['total'] ?></small>
+    <nav><ul class="pagination pagination-sm mb-0">
+      <?php for ($pg = 1; $pg <= $gratuities['last_page']; $pg++): ?>
+      <li class="page-item <?= $pg == $gratuities['page'] ? 'active' : '' ?>">
+        <a class="page-link" href="?page=gratuity&p=<?= $pg ?>"><?= $pg ?></a>
+      </li>
+      <?php endfor; ?>
+    </ul></nav>
+  </div>
+  <?php endif; ?>
 </div>

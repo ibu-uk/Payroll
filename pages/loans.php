@@ -53,7 +53,6 @@ if (isPost()) {
 
 // Add Loan Form
 if ($subAction === 'add') {
-    $employees = DB::rows("SELECT id, name_en, employee_no FROM employees WHERE status='active' ORDER BY name_en");
     ?>
     <div class="page-header">
       <h1 class="page-title"><i class="fas fa-hand-holding-usd me-2"></i>Add Loan</h1>
@@ -66,11 +65,8 @@ if ($subAction === 'add') {
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label">Employee</label>
-              <select class="form-select select2" name="employee_id" required>
-                <option value="">Select employee...</option>
-                <?php foreach ($employees as $e): ?>
-                <option value="<?= $e['id'] ?>"><?= h($e['name_en']) ?> (<?= h($e['employee_no']) ?>)</option>
-                <?php endforeach; ?>
+              <select class="form-select select2-ajax" name="employee_id" required data-placeholder="Search employee...">
+                <option value=""></option>
               </select>
             </div>
             <div class="col-md-6">
@@ -176,12 +172,14 @@ if ($subAction === 'repay') {
 }
 
 // List View
-$loans = DB::rows("
-    SELECT l.*, e.name_en, e.employee_no
-    FROM loans l
-    LEFT JOIN employees e ON e.id = l.employee_id
-    ORDER BY l.status ASC, l.created_at DESC
-");
+$loanPage = max(1, (int)get('p', 1));
+$loans = DB::paginate(
+    "SELECT l.*, e.name_en, e.employee_no
+     FROM loans l
+     LEFT JOIN employees e ON e.id = l.employee_id
+     ORDER BY l.status ASC, l.created_at DESC",
+    [], $loanPage, 50
+);
 ?>
 <div class="page-header d-flex justify-content-between align-items-start">
   <h1 class="page-title"><i class="fas fa-hand-holding-usd me-2"></i>Loans Management</h1>
@@ -204,7 +202,7 @@ $loans = DB::rows("
         </tr>
       </thead>
       <tbody>
-        <?php foreach ($loans as $l): ?>
+        <?php foreach ($loans['data'] as $l): ?>
         <tr>
           <td><?= h($l['name_en']) ?> (<?= h($l['employee_no']) ?>)</td>
           <td><?= money((float)$l['loan_amount']) ?></td>
@@ -228,10 +226,22 @@ $loans = DB::rows("
           </td>
         </tr>
         <?php endforeach; ?>
-        <?php if (empty($loans)): ?>
+        <?php if (empty($loans['data'])): ?>
         <tr><td colspan="8" class="text-center py-4 text-muted">No loans found</td></tr>
         <?php endif; ?>
       </tbody>
     </table>
   </div>
+  <?php if ($loans['last_page'] > 1): ?>
+  <div class="card-footer d-flex justify-content-between align-items-center">
+    <small class="text-muted">Showing <?= $loans['from'] ?>–<?= $loans['to'] ?> of <?= $loans['total'] ?></small>
+    <nav><ul class="pagination pagination-sm mb-0">
+      <?php for ($pg = 1; $pg <= $loans['last_page']; $pg++): ?>
+      <li class="page-item <?= $pg == $loans['page'] ? 'active' : '' ?>">
+        <a class="page-link" href="?page=loans&p=<?= $pg ?>"><?= $pg ?></a>
+      </li>
+      <?php endfor; ?>
+    </ul></nav>
+  </div>
+  <?php endif; ?>
 </div>

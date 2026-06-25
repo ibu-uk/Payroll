@@ -1,53 +1,41 @@
 <?php
 $pageTitle = t('dashboard');
 
-// Stats
-$totalEmps  = DB::val("SELECT COUNT(*) FROM employees WHERE status='active'");
-$newEmps    = DB::val("SELECT COUNT(*) FROM employees WHERE MONTH(hire_date)=MONTH(NOW()) AND YEAR(hire_date)=YEAR(NOW())");
-$onLeave    = DB::val("SELECT COUNT(*) FROM leave_requests WHERE status='approved' AND CURDATE() BETWEEN start_date AND end_date");
-$pendLeaves = DB::val("SELECT COUNT(*) FROM leave_requests WHERE status='pending'");
+// Cache dashboard stats for 5 minutes to reduce load on large datasets
+$dashCache = cacheFileGet('dashboard_stats', function() {
+    $data = [];
+    $data['totalEmps']  = DB::val("SELECT COUNT(*) FROM employees WHERE status='active'");
+    $data['newEmps']    = DB::val("SELECT COUNT(*) FROM employees WHERE MONTH(hire_date)=MONTH(NOW()) AND YEAR(hire_date)=YEAR(NOW())");
+    $data['onLeave']    = DB::val("SELECT COUNT(*) FROM leave_requests WHERE status='approved' AND CURDATE() BETWEEN start_date AND end_date");
+    $data['pendLeaves'] = DB::val("SELECT COUNT(*) FROM leave_requests WHERE status='pending'");
+    $data['curPeriod']  = DB::row("SELECT * FROM payroll_periods WHERE period_year=? AND period_month=?", [(int)date('Y'), (int)date('m')]);
+    $data['chartData']  = DB::rows("SELECT period_year, period_month, total_net, employee_count FROM payroll_periods WHERE status IN ('approved','paid') ORDER BY period_year DESC, period_month DESC LIMIT 6");
+    $data['deptBreakdown'] = DB::rows("SELECT d.id, d.name_en, d.name_ar, COUNT(e.id) as cnt, SUM(e.basic_salary) as total_salary FROM departments d LEFT JOIN employees e ON e.department_id=d.id AND e.status='active' GROUP BY d.id ORDER BY cnt DESC LIMIT 6");
+    $data['recentPayrolls'] = DB::rows("SELECT pp.*, COUNT(pi.id) as emp_count FROM payroll_periods pp LEFT JOIN payroll_items pi ON pi.payroll_period_id=pp.id GROUP BY pp.id ORDER BY pp.created_at DESC LIMIT 5");
+    $data['pendingLeaves'] = DB::rows("SELECT lr.*, e.name_en, e.name_ar, lt.name_en as ltype_en, lt.name_ar as ltype_ar FROM leave_requests lr JOIN employees e ON e.id=lr.employee_id JOIN leave_types lt ON lt.id=lr.leave_type_id WHERE lr.status='pending' ORDER BY lr.created_at DESC LIMIT 5");
+    $data['todayPresent'] = DB::val("SELECT COUNT(*) FROM attendance WHERE attendance_date=CURDATE() AND status='present'");
+    $data['todayAbsent']  = DB::val("SELECT COUNT(*) FROM attendance WHERE attendance_date=CURDATE() AND status='absent'");
+    $data['todayLate']    = DB::val("SELECT COUNT(*) FROM attendance WHERE attendance_date=CURDATE() AND status='late'");
+    return $data;
+}, 300);
 
-// Current period
-$curY = (int)date('Y'); $curM = (int)date('m');
-$curPeriod = DB::row("SELECT * FROM payroll_periods WHERE period_year=? AND period_month=?", [$curY, $curM]);
+$totalEmps  = $dashCache['totalEmps'];
+$newEmps    = $dashCache['newEmps'];
+$onLeave    = $dashCache['onLeave'];
+$pendLeaves = $dashCache['pendLeaves'];
+$curPeriod  = $dashCache['curPeriod'];
+$chartData  = $dashCache['chartData'];
+$deptBreakdown = $dashCache['deptBreakdown'];
+$recentPayrolls = $dashCache['recentPayrolls'];
+$pendingLeaves = $dashCache['pendingLeaves'];
+$todayPresent = $dashCache['todayPresent'];
+$todayAbsent  = $dashCache['todayAbsent'];
+$todayLate    = $dashCache['todayLate'];
+
 $totalPayroll = $curPeriod ? money((float)$curPeriod['total_net']) : money(0);
-
-// Last 6 months payroll chart data
-$chartData = DB::rows("
-    SELECT period_year, period_month, total_net, employee_count
-    FROM payroll_periods WHERE status IN ('approved','paid')
-    ORDER BY period_year DESC, period_month DESC LIMIT 6");
 $chartData = array_reverse($chartData);
 $chartLabels = array_map(fn($r) => monthName((int)$r['period_month'], lang()) . ' ' . $r['period_year'], $chartData);
 $chartValues = array_map(fn($r) => (float)$r['total_net'], $chartData);
-
-// Department breakdown
-$deptBreakdown = DB::rows("
-    SELECT d.name_en, d.name_ar, COUNT(e.id) as cnt, SUM(e.basic_salary) as total_salary
-    FROM departments d
-    LEFT JOIN employees e ON e.department_id=d.id AND e.status='active'
-    GROUP BY d.id ORDER BY cnt DESC LIMIT 6");
-
-// Recent payrolls
-$recentPayrolls = DB::rows("
-    SELECT pp.*, COUNT(pi.id) as emp_count
-    FROM payroll_periods pp
-    LEFT JOIN payroll_items pi ON pi.payroll_period_id=pp.id
-    GROUP BY pp.id ORDER BY pp.created_at DESC LIMIT 5");
-
-// Pending leave requests
-$pendingLeaves = DB::rows("
-    SELECT lr.*, e.name_en, e.name_ar, lt.name_en as ltype_en, lt.name_ar as ltype_ar
-    FROM leave_requests lr
-    JOIN employees e ON e.id=lr.employee_id
-    JOIN leave_types lt ON lt.id=lr.leave_type_id
-    WHERE lr.status='pending'
-    ORDER BY lr.created_at DESC LIMIT 5");
-
-// Today attendance
-$todayPresent = DB::val("SELECT COUNT(*) FROM attendance WHERE attendance_date=CURDATE() AND status='present'");
-$todayAbsent  = DB::val("SELECT COUNT(*) FROM attendance WHERE attendance_date=CURDATE() AND status='absent'");
-$todayLate    = DB::val("SELECT COUNT(*) FROM attendance WHERE attendance_date=CURDATE() AND status='late'");
 ?>
 
 <div class="page-header">

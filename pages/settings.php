@@ -163,7 +163,6 @@ $employeeDeductions = DB::rows("
     WHERE ed.is_active = 1
     ORDER BY ed.effective_date DESC, e.name_en
 ");
-$dedEmployees = DB::rows("SELECT id, name_en, employee_no FROM employees WHERE status='active' ORDER BY name_en");
 $dedTypesActive = DB::rows("SELECT * FROM deduction_types WHERE is_active=1 AND is_system=0 ORDER BY name_en");
 $tab = get('tab','company');
 ?>
@@ -507,11 +506,8 @@ function toggleRecurring() {
   <form method="POST"><input type="hidden" name="_csrf" value="<?= csrf() ?>"><input type="hidden" name="sub_action" value="emp_deduction"><input type="hidden" name="id" id="empDedId" value="0">
     <div class="modal-body">
       <div class="mb-3"><label class="form-label">Employee</label>
-        <select class="form-select" name="employee_id" id="empDedEmployee" required>
-          <option value="">Select employee...</option>
-          <?php foreach ($dedEmployees as $e): ?>
-          <option value="<?= $e['id'] ?>"><?= h($e['name_en']) ?> (<?= h($e['employee_no']) ?>)</option>
-          <?php endforeach; ?>
+        <select class="form-select select2-ajax" name="employee_id" id="empDedEmployee" required data-placeholder="Search employee...">
+          <option value=""></option>
         </select>
       </div>
       <div class="mb-3"><label class="form-label">Deduction Type</label>
@@ -529,7 +525,7 @@ function toggleRecurring() {
     <div class="modal-footer"><button class="btn btn-primary w-100"><?= t('save') ?></button></div>
   </form>
 </div></div></div>
-<script>function editEmpDed(d){document.getElementById('empDedId').value=d.id;document.getElementById('empDedEmployee').value=d.employee_id;document.getElementById('empDedType').value=d.deduction_type_id;document.getElementById('empDedAmount').value=d.amount;document.getElementById('empDedEffective').value=d.effective_date;document.getElementById('empDedEnd').value=d.end_date||'';new bootstrap.Modal(document.getElementById('empDedModal')).show();}</script>
+<script>function editEmpDed(d){document.getElementById('empDedId').value=d.id;var sel=document.getElementById('empDedEmployee');sel.innerHTML='<option value="'+d.employee_id+'" selected>'+d.name_en+' ('+d.employee_no+')</option>';try{$(sel).trigger('change');}catch(e){}document.getElementById('empDedType').value=d.deduction_type_id;document.getElementById('empDedAmount').value=d.amount;document.getElementById('empDedEffective').value=d.effective_date;document.getElementById('empDedEnd').value=d.end_date||'';new bootstrap.Modal(document.getElementById('empDedModal')).show();}</script>
 
 <?php elseif ($tab === 'account'): ?>
 <div class="card card-modern">

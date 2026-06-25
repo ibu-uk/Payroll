@@ -75,4 +75,9 @@ ob_start();
 require $pageFile;
 $content = ob_get_clean();
 
+// Clear dashboard cache after any mutating POST so stats stay fresh
+if (isPost()) {
+    cacheFileClear('dashboard_stats');
+}
+
 require 'includes/layout.php';

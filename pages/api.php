@@ -4,9 +4,15 @@ $result = [];
 switch ($endpoint) {
     case 'employees':
         $q = get('q');
-        $result = DB::rows("SELECT id, name_en, name_ar, employee_no FROM employees
-            WHERE status='active' AND (name_en LIKE ? OR name_ar LIKE ? OR employee_no LIKE ?) LIMIT 20",
-            ["%$q%","%$q%","%$q%"]);
+        $status = get('status', 'active');
+        $allowedStatus = ['active','terminated','all'];
+        if (!in_array($status, $allowedStatus)) $status = 'active';
+        $statusSql = $status === 'all' ? "status IN ('active','terminated','on_leave','probation')" : "status=?";
+        $params = ["%$q%","%$q%","%$q%"];
+        if ($status !== 'all') array_unshift($params, $status);
+        $result = DB::rows("SELECT id, name_en, name_ar, employee_no, status FROM employees
+            WHERE $statusSql AND (name_en LIKE ? OR name_ar LIKE ? OR employee_no LIKE ?)
+            ORDER BY name_en LIMIT 20", $params);
         break;
     case 'dept_stats':
         $result = DB::rows("SELECT d.name_en, COUNT(e.id) as cnt, SUM(e.basic_salary) as total

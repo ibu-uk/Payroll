@@ -253,18 +253,14 @@ if ($reportType === 'employee_history') {
         return;
     }
     
-    $employees = DB::rows("SELECT id, name_en, employee_no FROM employees ORDER BY name_en");
     ?>
     <div class="page-header"><h1 class="page-title"><i class="fas fa-history me-2"></i>Employee History</h1></div>
     <div class="card card-modern">
       <div class="card-body">
         <div class="mb-3">
           <label class="form-label">Select Employee</label>
-          <select class="form-select select2" onchange="location.href='?page=reports&type=employee_history&emp_id='+this.value">
-            <option value="">Select employee...</option>
-            <?php foreach ($employees as $e): ?>
-            <option value="<?= $e['id'] ?>"><?= h($e['name_en']) ?> (<?= h($e['employee_no']) ?>)</option>
-            <?php endforeach; ?>
+          <select class="form-select select2-ajax" data-status="all" onchange="location.href='?page=reports&type=employee_history&emp_id='+this.value" data-placeholder="Search employee...">
+            <option value=""></option>
           </select>
         </div>
       </div>
@@ -536,10 +532,8 @@ if ($reportType === 'overtime_absenteeism') {
             </select>
           </div>
           <div class="mb-3"><label class="form-label"><?= t('employees') ?> (leave blank for all)</label>
-            <select class="form-select select2" name="emp_id">
+            <select class="form-select select2-ajax" name="emp_id" data-placeholder="Search employee...">
               <option value="">All Employees</option>
-              <?php $emps = DB::rows("SELECT id,name_en FROM employees WHERE status='active' ORDER BY name_en"); ?>
-              <?php foreach ($emps as $e): ?><option value="<?= $e['id'] ?>"><?= h($e['name_en']) ?></option><?php endforeach; ?>
             </select>
           </div>
           <button class="btn btn-danger w-100"><i class="fas fa-file-pdf me-2"></i>Generate PDF Payslip</button>

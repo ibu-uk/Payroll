@@ -71,6 +71,8 @@ CREATE TABLE IF NOT EXISTS `employee_allowances` (
   `id` INT AUTO_INCREMENT PRIMARY KEY, `employee_id` INT NOT NULL,
   `allowance_type_id` INT NOT NULL, `amount` DECIMAL(15,3) DEFAULT 0,
   `effective_date` DATE, `is_active` TINYINT(1) DEFAULT 1,
+  INDEX `idx_ea_emp_active`(`employee_id`,`is_active`),
+  INDEX `idx_ea_type`(`allowance_type_id`),
   FOREIGN KEY(`employee_id`) REFERENCES `employees`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -84,6 +86,8 @@ CREATE TABLE IF NOT EXISTS `employee_deductions` (
   `id` INT AUTO_INCREMENT PRIMARY KEY, `employee_id` INT NOT NULL,
   `deduction_type_id` INT NOT NULL, `amount` DECIMAL(15,3) DEFAULT 0,
   `effective_date` DATE, `end_date` DATE, `is_active` TINYINT(1) DEFAULT 1,
+  INDEX `idx_ed_emp_active`(`employee_id`,`is_active`),
+  INDEX `idx_ed_dates`(`employee_id`,`effective_date`,`end_date`),
   FOREIGN KEY(`employee_id`) REFERENCES `employees`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -98,6 +102,8 @@ CREATE TABLE IF NOT EXISTS `loans` (
   `start_date` DATE NOT NULL, `last_payment_date` DATE NULL,
   `status` ENUM('active','paid','closed') DEFAULT 'active',
   `reason` TEXT, `notes` TEXT, `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_loan_emp_status`(`employee_id`,`status`),
+  INDEX `idx_loan_status`(`status`),
   FOREIGN KEY(`employee_id`) REFERENCES `employees`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -114,6 +120,9 @@ CREATE TABLE IF NOT EXISTS `leave_requests` (
   `approved_by` INT, `approved_at` TIMESTAMP NULL, `rejection_reason` TEXT,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX `idx_emp_leave`(`employee_id`,`status`),
+  INDEX `idx_leave_status`(`status`),
+  INDEX `idx_leave_dates`(`start_date`,`end_date`),
+  INDEX `idx_leave_created`(`created_at`),
   FOREIGN KEY(`employee_id`) REFERENCES `employees`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -142,7 +151,8 @@ CREATE TABLE IF NOT EXISTS `attendance` (
   `working_hours` DECIMAL(5,2) DEFAULT 0, `notes` VARCHAR(500),
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY `unique_att`(`employee_id`,`attendance_date`),
-  INDEX `idx_att_date`(`attendance_date`), INDEX `idx_att_emp`(`employee_id`),
+  INDEX `idx_att_emp_date`(`employee_id`,`attendance_date`),
+  INDEX `idx_att_date`(`attendance_date`),
   FOREIGN KEY(`employee_id`) REFERENCES `employees`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -155,7 +165,10 @@ CREATE TABLE IF NOT EXISTS `payroll_periods` (
   `total_net` DECIMAL(18,3) DEFAULT 0, `employee_count` INT DEFAULT 0, `notes` TEXT,
   `created_by` INT, `approved_by` INT, `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `approved_at` TIMESTAMP NULL,
-  UNIQUE KEY `unique_period`(`period_year`,`period_month`)
+  UNIQUE KEY `unique_period`(`period_year`,`period_month`),
+  INDEX `idx_period_status`(`status`),
+  INDEX `idx_period_year_month`(`period_year`,`period_month`),
+  INDEX `idx_period_created`(`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `payroll_items` (
@@ -255,7 +268,8 @@ CREATE TABLE IF NOT EXISTS `bonuses` (
   `status` ENUM('pending','approved','rejected','paid') DEFAULT 'pending',
   `payment_date` DATE,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX `idx_emp_bonus`(`employee_id`,`period_year`,`period_month`),
+  INDEX `idx_emp_bonus`(`employee_id`,`status`,`period_year`,`period_month`),
+  INDEX `idx_bonus_period`(`period_year`,`period_month`),
   INDEX `idx_bonus_status`(`status`),
   FOREIGN KEY(`employee_id`) REFERENCES `employees`(`id`) ON DELETE CASCADE,
   FOREIGN KEY(`approved_by`) REFERENCES `users`(`id`)
@@ -278,6 +292,8 @@ CREATE TABLE IF NOT EXISTS `gratuity` (
   `status` ENUM('calculated','approved','rejected','paid') DEFAULT 'calculated',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX `idx_emp_gratuity`(`employee_id`),
+  INDEX `idx_gratuity_status`(`status`),
+  INDEX `idx_gratuity_created`(`created_at`),
   FOREIGN KEY(`employee_id`) REFERENCES `employees`(`id`) ON DELETE CASCADE,
   FOREIGN KEY(`approved_by`) REFERENCES `users`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

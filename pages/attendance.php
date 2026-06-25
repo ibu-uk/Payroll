@@ -47,12 +47,19 @@ $offset = ($page - 1) * $perPage;
 $employees = DB::rows("SELECT e.id, e.name_en, e.name_ar, e.employee_no, d.name_en as dept_en FROM employees e
     LEFT JOIN departments d ON d.id=e.department_id $where ORDER BY e.name_en LIMIT $perPage OFFSET $offset", $params);
 
-// Fetch existing attendance
-$attRecords = DB::rows("SELECT employee_id, attendance_date, status, late_minutes, overtime_hours FROM attendance
-    WHERE YEAR(attendance_date)=? AND MONTH(attendance_date)=?", [$year, $month]);
+// Fetch existing attendance only for employees on this page (use date range for index usage)
+$empIds = array_column($employees, 'id');
+$startDate = sprintf('%04d-%02d-01', $year, $month);
+$endDate   = date('Y-m-t', strtotime($startDate));
 $attMap = [];
-foreach ($attRecords as $r) {
-    $attMap[$r['employee_id']][$r['attendance_date']] = $r;
+if (!empty($empIds)) {
+    $placeholders = implode(',', array_fill(0, count($empIds), '?'));
+    $attRecords = DB::rows("SELECT employee_id, attendance_date, status, late_minutes, overtime_hours FROM attendance
+        WHERE employee_id IN ($placeholders) AND attendance_date BETWEEN ? AND ?",
+        array_merge($empIds, [$startDate, $endDate]));
+    foreach ($attRecords as $r) {
+        $attMap[$r['employee_id']][$r['attendance_date']] = $r;
+    }
 }
 
 // Fetch holidays for the month (check if table exists first)
@@ -60,7 +67,7 @@ $holidaysTableExists = DB::row("SHOW TABLES LIKE 'holidays'") !== null;
 $holidayMap = [];
 if ($holidaysTableExists) {
     $holidays = DB::rows("SELECT holiday_date, name_en, name_ar FROM holidays 
-        WHERE (YEAR(holiday_date)=? AND MONTH(holiday_date)=?) OR is_recurring=1", [$year, $month]);
+        WHERE (holiday_date BETWEEN ? AND ?) OR is_recurring=1", [$startDate, $endDate]);
     foreach ($holidays as $h) {
         $date = $h['holiday_date'];
         // For recurring holidays, check if this year's date matches

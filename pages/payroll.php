@@ -43,19 +43,18 @@ if (isPost()) {
         DB::q("DELETE FROM payroll_item_details WHERE payroll_item_id IN (SELECT id FROM payroll_items WHERE payroll_period_id=?)", [$periodId]);
         DB::q("DELETE FROM payroll_items WHERE payroll_period_id=?", [$periodId]);
 
-        // Use batch processing for better performance with large datasets
-        $employees = DB::rows("SELECT id FROM employees WHERE status IN ('active','probation')");
+        // Use batch calculation to avoid N+1 queries
+        $employeeIds = array_column(DB::rows("SELECT id FROM employees WHERE status IN ('active','probation')"), 'id');
         $totalGross = 0; $totalNet = 0; $totalDeds = 0;
         $processedCount = 0;
         $errorCount = 0;
         $batchSize = 100; // Process 100 employees at a time
-        $employeeIds = array_column($employees, 'id');
         $batches = array_chunk($employeeIds, $batchSize);
 
         foreach ($batches as $batch) {
-            foreach ($batch as $empId) {
-                try {
-                    $calc = calculatePayrollItem($empId, $periodId, $period['period_year'], $period['period_month']);
+            try {
+                $calcs = calculatePayrollBatch($batch, $periodId, $period['period_year'], $period['period_month']);
+                foreach ($calcs as $empId => $calc) {
                     if (empty($calc)) {
                         $errorCount++;
                         continue;
@@ -82,10 +81,10 @@ if (isPost()) {
                     $totalNet   += $calc['net_salary'];
                     $totalDeds  += $calc['total_deductions'];
                     $processedCount++;
-                } catch (Exception $e) {
-                    $errorCount++;
-                    error_log("Payroll processing error for employee $empId: " . $e->getMessage());
                 }
+            } catch (Exception $e) {
+                $errorCount += count($batch);
+                error_log("Payroll processing error for batch: " . $e->getMessage());
             }
         }
 

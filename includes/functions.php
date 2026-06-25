@@ -21,6 +21,30 @@ function cacheClear(string $key = null) {
     }
 }
 
+// File-based cache for cross-request caching
+function cacheFileGet(string $key, callable $callback, int $ttl = 300) {
+    $file = CACHE_DIR . 'cache_' . preg_replace('/[^a-z0-9_-]/i', '_', $key) . '.json';
+    if (file_exists($file) && (time() - filemtime($file)) < $ttl) {
+        $data = json_decode(file_get_contents($file), true);
+        if ($data !== null) return $data;
+    }
+    $data = $callback();
+    if (!is_dir(CACHE_DIR)) mkdir(CACHE_DIR, 0755, true);
+    file_put_contents($file, json_encode($data), LOCK_EX);
+    return $data;
+}
+
+function cacheFileClear(string $key = null): void {
+    if ($key) {
+        $file = CACHE_DIR . 'cache_' . preg_replace('/[^a-z0-9_-]/i', '_', $key) . '.json';
+        if (file_exists($file)) unlink($file);
+    } else {
+        foreach (glob(CACHE_DIR . 'cache_*.json') as $f) {
+            unlink($f);
+        }
+    }
+}
+
 // ── Formatting helpers ────────────────────────────────────────────────────────
 
 function money(float $amount, string $dec = ','): string {
@@ -78,11 +102,14 @@ function deptName(array $dept): string {
 // ── Payroll calculation engine ────────────────────────────────────────────────
 
 function calculatePayrollItem(int $employeeId, int $periodId, int $year, int $month): array {
-    $settings = DB::row("SELECT * FROM settings WHERE id=1");
-    $emp = DB::row("SELECT * FROM employees WHERE id=?", [$employeeId]);
+    static $settings = null;
+    if ($settings === null) $settings = DB::row("SELECT * FROM settings WHERE id=1");
+    $emp = DB::row("SELECT e.*, jt.working_hours FROM employees e LEFT JOIN job_titles jt ON jt.id=e.job_title_id WHERE e.id=?", [$employeeId]);
     if (!$emp) return [];
 
     $basic = (float) $emp['basic_salary'];
+    $startDate = sprintf('%04d-%02d-01', $year, $month);
+    $endDate   = date('Y-m-t', strtotime($startDate));
 
     // Allowances
     $allowanceRows = DB::rows("
@@ -117,22 +144,22 @@ function calculatePayrollItem(int $employeeId, int $periodId, int $year, int $mo
 
     $gross = $basic + $totalAllowances + $bonusAmt;
 
-    // Get employee's job title for working hours
-    $jobInfo = DB::row("SELECT e.job_title_id, jt.working_hours FROM employees e LEFT JOIN job_titles jt ON jt.id = e.job_title_id WHERE e.id=?", [$employeeId]);
-    $jobWorkHours = (int)($jobInfo['working_hours'] ?? 8); // Default to 8 if not set
+    // Use job-specific working hours
+    $jobWorkHours = (int)($emp['working_hours'] ?? 8);
 
-    // Attendance summary
+    // Attendance summary using date range for index usage
     $att = DB::row("
         SELECT
             SUM(CASE WHEN status='absent' THEN 1 ELSE 0 END) as absent_days,
             SUM(late_minutes) as late_minutes,
-            SUM(overtime_hours) as overtime_hours
+            SUM(overtime_hours) as overtime_hours,
+            SUM(CASE WHEN status='holiday' THEN overtime_hours ELSE 0 END) as holiday_ot
         FROM attendance
-        WHERE employee_id=? AND YEAR(attendance_date)=? AND MONTH(attendance_date)=?",
-        [$employeeId, $year, $month]);
+        WHERE employee_id=? AND attendance_date BETWEEN ? AND ?",
+        [$employeeId, $startDate, $endDate]);
 
     $workDays   = (int) $settings['work_days_per_month'];
-    $workHours  = $jobWorkHours; // Use job-specific working hours
+    $workHours  = $jobWorkHours;
     $dailyRate  = $workDays > 0 ? $basic / $workDays : 0;
     $hourlyRate = ($workHours > 0 && $workDays > 0) ? $basic / ($workDays * $workHours) : 0;
     $minuteRate = $hourlyRate / 60;
@@ -143,18 +170,10 @@ function calculatePayrollItem(int $employeeId, int $periodId, int $year, int $mo
     $absentDed     = round($dailyRate * $absentDays, 3);
     $lateDed       = round($minuteRate * $lateMinutes, 3);
     
-    // Check for holiday overtime - use holiday rate if employee worked on holidays
     $holidayOvertimeRate = (float)($settings['holiday_overtime_rate'] ?? 2.0);
     $regularOvertimeRate = (float)$settings['overtime_rate'];
     
-    // Get holiday work hours for the month
-    $holidayAtt = DB::rows("
-        SELECT SUM(overtime_hours) as holiday_ot 
-        FROM attendance 
-        WHERE employee_id=? AND YEAR(attendance_date)=? AND MONTH(attendance_date)=? 
-        AND status='holiday' AND overtime_hours > 0",
-        [$employeeId, $year, $month]);
-    $holidayOvertimeHours = (float)($holidayAtt[0]['holiday_ot'] ?? 0);
+    $holidayOvertimeHours = (float)($att['holiday_ot'] ?? 0);
     $regularOvertimeHours = $overtimeHours - $holidayOvertimeHours;
     
     $overtimeAmt = round(
@@ -175,7 +194,7 @@ function calculatePayrollItem(int $employeeId, int $periodId, int $year, int $mo
     $loans = DB::rows("
         SELECT id, installment_amount FROM loans
         WHERE employee_id=? AND status='active' AND start_date<=?",
-        [$employeeId, "$year-$month-01"]);
+        [$employeeId, $startDate]);
     $loanDed = 0;
     foreach ($loans as $l) $loanDed += (float)$l['installment_amount'];
     $loanDed = round($loanDed, 3);
@@ -187,7 +206,7 @@ function calculatePayrollItem(int $employeeId, int $periodId, int $year, int $mo
         JOIN deduction_types dt ON dt.id = ed.deduction_type_id
         WHERE ed.employee_id=? AND ed.is_active=1 AND dt.is_system=0
         AND (ed.end_date IS NULL OR ed.end_date >= ?)",
-        [$employeeId, "$year-$month-01"]);
+        [$employeeId, $startDate]);
 
     $dedDetails = [];
     $otherDeds = 0;
@@ -225,6 +244,188 @@ function calculatePayrollItem(int $employeeId, int $periodId, int $year, int $mo
         'allowance_details' => $allowanceDetails,
         'deduction_details' => $dedDetails,
     ];
+}
+
+/**
+ * Batch payroll calculation - pre-fetches all data for a list of employees
+ * to avoid N+1 query issues during payroll processing.
+ */
+function calculatePayrollBatch(array $employeeIds, int $periodId, int $year, int $month): array {
+    if (empty($employeeIds)) return [];
+
+    static $settings = null;
+    if ($settings === null) {
+        $settings = DB::row("SELECT * FROM settings WHERE id=1");
+    }
+
+    $placeholders = implode(',', array_fill(0, count($employeeIds), '?'));
+    $startDate = sprintf('%04d-%02d-01', $year, $month);
+    $endDate   = date('Y-m-t', strtotime($startDate));
+
+    // Pre-fetch employees + job hours
+    $employees = DB::rows("SELECT e.*, jt.working_hours FROM employees e LEFT JOIN job_titles jt ON jt.id=e.job_title_id WHERE e.id IN ($placeholders)", $employeeIds);
+    $empMap = array_column($employees, null, 'id');
+
+    // Pre-fetch active allowances
+    $allowanceRows = DB::rows("
+        SELECT ea.employee_id, ea.amount, ea.allowance_type_id, at.calc_type, at.name_en, at.name_ar
+        FROM employee_allowances ea
+        JOIN allowance_types at ON at.id = ea.allowance_type_id
+        WHERE ea.employee_id IN ($placeholders) AND ea.is_active = 1", $employeeIds);
+    $allowanceMap = [];
+    foreach ($allowanceRows as $a) {
+        $allowanceMap[$a['employee_id']][] = $a;
+    }
+
+    // Pre-fetch attendance summaries
+    $attRows = DB::rows("
+        SELECT employee_id, status, late_minutes, overtime_hours
+        FROM attendance
+        WHERE employee_id IN ($placeholders) AND attendance_date BETWEEN ? AND ?",
+        array_merge($employeeIds, [$startDate, $endDate]));
+    $attMap = [];
+    foreach ($attRows as $r) {
+        $eid = $r['employee_id'];
+        if (!isset($attMap[$eid])) {
+            $attMap[$eid] = ['absent_days' => 0, 'late_minutes' => 0, 'overtime_hours' => 0, 'holiday_ot' => 0];
+        }
+        $attMap[$eid]['late_minutes'] += (int)$r['late_minutes'];
+        $attMap[$eid]['overtime_hours'] += (float)$r['overtime_hours'];
+        if ($r['status'] === 'absent') $attMap[$eid]['absent_days'] += 1;
+        if ($r['status'] === 'holiday' && (float)$r['overtime_hours'] > 0) {
+            $attMap[$eid]['holiday_ot'] += (float)$r['overtime_hours'];
+        }
+    }
+
+    // Pre-fetch bonuses
+    $bonusMap = [];
+    $bonusesTableExists = DB::row("SHOW TABLES LIKE 'bonuses'") !== null;
+    if ($bonusesTableExists) {
+        $bonusRows = DB::rows("
+            SELECT employee_id, COALESCE(SUM(amount), 0) as amount
+            FROM bonuses
+            WHERE employee_id IN ($placeholders) AND status='approved'
+            AND period_year=? AND period_month=?
+            GROUP BY employee_id",
+            array_merge($employeeIds, [$year, $month]));
+        foreach ($bonusRows as $b) {
+            $bonusMap[(int)$b['employee_id']] = (float)$b['amount'];
+        }
+    }
+
+    // Pre-fetch active loans
+    $loanRows = DB::rows("
+        SELECT employee_id, installment_amount
+        FROM loans
+        WHERE employee_id IN ($placeholders) AND status='active' AND start_date <= ?",
+        array_merge($employeeIds, [$startDate]));
+    $loanMap = [];
+    foreach ($loanRows as $l) {
+        $loanMap[(int)$l['employee_id']] = ($loanMap[(int)$l['employee_id']] ?? 0) + (float)$l['installment_amount'];
+    }
+
+    // Pre-fetch active custom deductions
+    $deductionRows = DB::rows("
+        SELECT ed.employee_id, ed.amount, ed.deduction_type_id, dt.calc_type, dt.name_en, dt.name_ar
+        FROM employee_deductions ed
+        JOIN deduction_types dt ON dt.id = ed.deduction_type_id
+        WHERE ed.employee_id IN ($placeholders) AND ed.is_active=1 AND dt.is_system=0
+        AND (ed.end_date IS NULL OR ed.end_date >= ?)", array_merge($employeeIds, [$startDate]));
+    $deductionMap = [];
+    foreach ($deductionRows as $d) {
+        $deductionMap[(int)$d['employee_id']][] = $d;
+    }
+
+    // Calculate per employee
+    $results = [];
+    $workDays = (int)($settings['work_days_per_month'] ?? 22);
+    $regularOvertimeRate = (float)($settings['overtime_rate'] ?? 1.25);
+    $holidayOvertimeRate = (float)($settings['holiday_overtime_rate'] ?? 2.0);
+    $siRate = (float)($settings['social_insurance_rate'] ?? 11.0);
+    $taxRate = (float)($settings['tax_rate'] ?? 0.0);
+
+    foreach ($employeeIds as $empId) {
+        $emp = $empMap[$empId] ?? null;
+        if (!$emp) continue;
+
+        $basic = (float)$emp['basic_salary'];
+        $jobHours = (int)($emp['working_hours'] ?? 8);
+        $hourlyRate = ($jobHours > 0 && $workDays > 0) ? ($basic / ($workDays * $jobHours)) : 0;
+        $minuteRate = $hourlyRate / 60;
+        $dailyRate = $workDays > 0 ? $basic / $workDays : 0;
+
+        $allowanceDetails = [];
+        $totalAllowances = 0;
+        foreach ($allowanceMap[$empId] ?? [] as $a) {
+            $amt = match($a['calc_type']) {
+                'percentage_basic' => $basic * $a['amount'] / 100,
+                default            => (float)$a['amount'],
+            };
+            $totalAllowances += $amt;
+            $allowanceDetails[] = ['type' => 'allowance', 'ref_id' => $a['allowance_type_id'], 'name_en' => $a['name_en'], 'name_ar' => $a['name_ar'], 'amount' => $amt];
+        }
+
+        $bonusAmt = $bonusMap[$empId] ?? 0;
+        $gross = $basic + $totalAllowances + $bonusAmt;
+
+        $att = $attMap[$empId] ?? ['absent_days' => 0, 'late_minutes' => 0, 'overtime_hours' => 0, 'holiday_ot' => 0];
+        $absentDays = (float)$att['absent_days'];
+        $lateMinutes = (int)$att['late_minutes'];
+        $overtimeHours = (float)$att['overtime_hours'];
+        $holidayOvertimeHours = (float)$att['holiday_ot'];
+        $regularOvertimeHours = $overtimeHours - $holidayOvertimeHours;
+
+        $absentDed = round($dailyRate * $absentDays, 3);
+        $lateDed = round($minuteRate * $lateMinutes, 3);
+        $overtimeAmt = round(
+            $hourlyRate * $regularOvertimeRate * $regularOvertimeHours +
+            $hourlyRate * $holidayOvertimeRate * $holidayOvertimeHours,
+            3
+        );
+
+        $siAmt = round($basic * $siRate / 100, 3);
+        $taxAmt = round($gross * $taxRate / 100, 3);
+        $loanDed = round($loanMap[$empId] ?? 0, 3);
+
+        $dedDetails = [];
+        $otherDeds = 0;
+        foreach ($deductionMap[$empId] ?? [] as $d) {
+            $amt = match($d['calc_type']) {
+                'percentage_basic' => $basic * $d['amount'] / 100,
+                'percentage_gross' => $gross * $d['amount'] / 100,
+                default            => (float)$d['amount'],
+            };
+            $otherDeds += $amt;
+            $dedDetails[] = ['type' => 'deduction', 'ref_id' => $d['deduction_type_id'], 'name_en' => $d['name_en'], 'name_ar' => $d['name_ar'], 'amount' => $amt];
+        }
+
+        $totalDeds = round($siAmt + $taxAmt + $loanDed + $absentDed + $lateDed + $otherDeds, 3);
+        $netSalary = round($gross + $overtimeAmt - $totalDeds, 3);
+
+        $results[$empId] = [
+            'payroll_period_id' => $periodId,
+            'employee_id'       => $empId,
+            'basic_salary'      => $basic,
+            'total_allowances'  => round($totalAllowances, 3),
+            'gross_salary'      => round($gross, 3),
+            'overtime_hours'    => $overtimeHours,
+            'overtime_amount'   => $overtimeAmt,
+            'absent_days'       => $absentDays,
+            'absent_deduction'  => $absentDed,
+            'late_minutes'      => $lateMinutes,
+            'late_deduction'    => $lateDed,
+            'loan_deduction'    => $loanDed,
+            'social_insurance'  => $siAmt,
+            'tax_amount'        => $taxAmt,
+            'other_deductions'  => round($otherDeds, 3),
+            'total_deductions'  => $totalDeds,
+            'net_salary'        => $netSalary,
+            'allowance_details' => $allowanceDetails,
+            'deduction_details' => $dedDetails,
+        ];
+    }
+
+    return $results;
 }
 
 function monthName(int $m, string $lang = 'en'): string {

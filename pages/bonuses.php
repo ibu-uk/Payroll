@@ -62,7 +62,6 @@ if (isPost()) {
 
 // Add/Edit Form
 if ($subAction === 'add') {
-    $employees = DB::rows("SELECT id, name_en, employee_no FROM employees WHERE status='active' ORDER BY name_en");
     ?>
     <div class="page-header">
       <h1 class="page-title"><i class="fas fa-gift me-2"></i>Add Bonus</h1>
@@ -75,11 +74,8 @@ if ($subAction === 'add') {
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label">Employee</label>
-              <select class="form-select select2" name="employee_id" required>
-                <option value="">Select employee...</option>
-                <?php foreach ($employees as $e): ?>
-                <option value="<?= $e['id'] ?>"><?= h($e['name_en']) ?> (<?= h($e['employee_no']) ?>)</option>
-                <?php endforeach; ?>
+              <select class="form-select select2-ajax" name="employee_id" required data-placeholder="Search employee...">
+                <option value=""></option>
               </select>
             </div>
             <div class="col-md-6">
@@ -131,16 +127,18 @@ if ($subAction === 'add') {
 }
 
 // List View
+$bonusPage = max(1, (int)get('p', 1));
 $bonusesTableExists = DB::row("SHOW TABLES LIKE 'bonuses'") !== null;
-$bonuses = [];
+$bonuses = ['data'=>[], 'last_page'=>0, 'page'=>1, 'from'=>0, 'to'=>0, 'total'=>0];
 if ($bonusesTableExists) {
-    $bonuses = DB::rows("
-        SELECT b.*, e.name_en, e.employee_no, u.name as approved_by_name
-        FROM bonuses b
-        LEFT JOIN employees e ON e.id = b.employee_id
-        LEFT JOIN users u ON u.id = b.approved_by
-        ORDER BY b.created_at DESC
-    ");
+    $bonuses = DB::paginate(
+        "SELECT b.*, e.name_en, e.employee_no, u.name as approved_by_name
+         FROM bonuses b
+         LEFT JOIN employees e ON e.id = b.employee_id
+         LEFT JOIN users u ON u.id = b.approved_by
+         ORDER BY b.created_at DESC",
+        [], $bonusPage, 50
+    );
 }
 ?>
 <div class="page-header d-flex justify-content-between align-items-start">
@@ -163,7 +161,7 @@ if ($bonusesTableExists) {
         </tr>
       </thead>
       <tbody>
-        <?php foreach ($bonuses as $b): ?>
+        <?php foreach ($bonuses['data'] as $b): ?>
         <tr>
           <td><?= h($b['name_en']) ?> (<?= h($b['employee_no']) ?>)</td>
           <td><?= ucfirst(str_replace('_', ' ', $b['bonus_type'])) ?></td>
@@ -196,10 +194,22 @@ if ($bonusesTableExists) {
           </td>
         </tr>
         <?php endforeach; ?>
-        <?php if (empty($bonuses)): ?>
+        <?php if (empty($bonuses['data'])): ?>
         <tr><td colspan="7" class="text-center py-4 text-muted">No bonuses found</td></tr>
         <?php endif; ?>
       </tbody>
     </table>
   </div>
+  <?php if ($bonuses['last_page'] > 1): ?>
+  <div class="card-footer d-flex justify-content-between align-items-center">
+    <small class="text-muted">Showing <?= $bonuses['from'] ?>–<?= $bonuses['to'] ?> of <?= $bonuses['total'] ?></small>
+    <nav><ul class="pagination pagination-sm mb-0">
+      <?php for ($pg = 1; $pg <= $bonuses['last_page']; $pg++): ?>
+      <li class="page-item <?= $pg == $bonuses['page'] ? 'active' : '' ?>">
+        <a class="page-link" href="?page=bonuses&p=<?= $pg ?>"><?= $pg ?></a>
+      </li>
+      <?php endfor; ?>
+    </ul></nav>
+  </div>
+  <?php endif; ?>
 </div>

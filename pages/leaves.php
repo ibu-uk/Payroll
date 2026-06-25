@@ -23,26 +23,36 @@ if (isPost()) {
     }
     redirect('index.php?page=leaves');
 }
-$employees  = DB::rows("SELECT id,name_en,name_ar FROM employees WHERE status='active' ORDER BY name_en");
+$employees  = DB::rows("SELECT id,name_en,name_ar FROM employees WHERE status='active' ORDER BY name_en LIMIT 200");
 $leaveTypes = DB::rows("SELECT * FROM leave_types WHERE is_active=1");
 $filter = get('status','pending');
 $where = $filter ? "WHERE lr.status=?" : "WHERE 1=1";
 $params = $filter ? [$filter] : [];
+
+$leavePage = max(1, (int)get('p', 1));
+$leavePerPage = 50;
+$totalLeaveCount = DB::val("SELECT COUNT(*) FROM leave_requests lr $where", $params);
+$totalLeavePages = ceil($totalLeaveCount / $leavePerPage);
+$leaveOffset = ($leavePage - 1) * $leavePerPage;
 $requests = DB::rows("SELECT lr.*,e.name_en,e.name_ar,lt.name_en as lt_en,lt.name_ar as lt_ar,lt.is_paid
     FROM leave_requests lr JOIN employees e ON e.id=lr.employee_id JOIN leave_types lt ON lt.id=lr.leave_type_id
-    $where ORDER BY lr.created_at DESC LIMIT 100", $params);
+    $where ORDER BY lr.created_at DESC LIMIT $leavePerPage OFFSET $leaveOffset", $params);
 
-// Get leave balance for current year
+// Get leave balance for current year (only for employees visible in dropdown to reduce memory)
 $balanceTableExists = DB::row("SHOW TABLES LIKE 'leave_balance'") !== null;
 $leaveBalances = [];
 if ($balanceTableExists) {
-    $leaveBalances = DB::rows("
-        SELECT lb.employee_id, lb.leave_type_id, lt.name_en, lt.name_ar, 
-               lb.total_days, lb.used_days, lb.remaining_days
-        FROM leave_balance lb
-        JOIN leave_types lt ON lt.id = lb.leave_type_id
-        WHERE lb.year = YEAR(CURDATE())
-    ");
+    $empIds = array_column($employees, 'id');
+    if (!empty($empIds)) {
+        $placeholders = implode(',', array_fill(0, count($empIds), '?'));
+        $leaveBalances = DB::rows("
+            SELECT lb.employee_id, lb.leave_type_id, lt.name_en, lt.name_ar, 
+                   lb.total_days, lb.used_days, lb.remaining_days
+            FROM leave_balance lb
+            JOIN leave_types lt ON lt.id = lb.leave_type_id
+            WHERE lb.year = YEAR(CURDATE()) AND lb.employee_id IN ($placeholders)
+        ", $empIds);
+    }
 }
 ?>
 <div class="page-header d-flex justify-content-between">
@@ -102,6 +112,18 @@ if ($balanceTableExists) {
       </table>
     </div>
   </div>
+  <?php if ($totalLeavePages > 1): ?>
+  <div class="card-footer d-flex justify-content-between align-items-center">
+    <small class="text-muted">Showing <?= $leaveOffset + 1 ?>–<?= min($leaveOffset + $leavePerPage, $totalLeaveCount) ?> of <?= $totalLeaveCount ?></small>
+    <nav><ul class="pagination pagination-sm mb-0">
+      <?php for ($pg = 1; $pg <= $totalLeavePages; $pg++): ?>
+      <li class="page-item <?= $pg == $leavePage ? 'active' : '' ?>">
+        <a class="page-link" href="?page=leaves&status=<?= $filter ?>&p=<?= $pg ?>"><?= $pg ?></a>
+      </li>
+      <?php endfor; ?>
+    </ul></nav>
+  </div>
+  <?php endif; ?>
 </div>
 <!-- New Leave Modal -->
 <div class="modal fade" id="leaveModal" tabindex="-1">

@@ -52,6 +52,38 @@ document.addEventListener('DOMContentLoaded', () => {
       width: '100%',
       placeholder: function() { return $(this).data('placeholder') || 'Select...'; }
     });
+
+    // AJAX select2 for large employee lists
+    $('.select2-ajax').select2({
+      theme: 'bootstrap-5',
+      width: '100%',
+      placeholder: 'Search employee...',
+      minimumInputLength: 1,
+      ajax: {
+        url: 'index.php',
+        dataType: 'json',
+        delay: 250,
+        data: function(params) {
+          return {
+            page: 'api',
+            endpoint: 'employees',
+            status: $(this).data('status') || 'active',
+            q: params.term
+          };
+        },
+        processResults: function(response) {
+          const data = response.data || [];
+          return {
+            results: data.map(function(item) {
+              return {
+                id: item.id,
+                text: item.name_en + (item.employee_no ? ' (' + item.employee_no + ')' : '')
+              };
+            })
+          };
+        }
+      }
+    });
   }
 
   // ── DataTables default init ──────────────────────────────────────────────
