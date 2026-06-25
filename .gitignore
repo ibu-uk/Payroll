@@ -1,0 +1,27 @@
+# Cache and logs
+cache/
+*.log
+
+# Uploaded files
+uploads/
+
+# Dependencies
+vendor/
+node_modules/
+
+# Environment
+.env
+config/.env
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.swp
+*~
