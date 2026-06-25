@@ -10,7 +10,7 @@ define('CACHE_DIR',   APP_DIR . '/cache/');
 
 // ── Database (XAMPP defaults: host=localhost, user=root, pass='') ─────────────
 define('DB_HOST',    'localhost');
-define('DB_NAME',    'payroll_db');
+define('DB_NAME',    'payrollro');
 define('DB_USER',    'root');
 define('DB_PASS',    '');          // XAMPP default is empty — change for production
 define('DB_CHARSET', 'utf8mb4');
