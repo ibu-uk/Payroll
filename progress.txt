@@ -1,0 +1,32 @@
+PayrollPro Translation & Refinement Progress
+============================================
+
+Completed Tasks:
+1. Settings functional issues (self-deactivation, email uniqueness, password length) - DONE
+2. Attendance daily entry start time based on shift type - DONE
+3. Leave balance initialization optimization - DONE
+4. Arabic translation: Loans module - DONE
+5. Arabic translation: Bonuses module - DONE
+6. Arabic translation: Gratuity module - DONE
+7. Arabic translation: Leave Types module - DONE
+8. Arabic translation: Job Titles module - DONE
+9. Arabic translation: Settings module - DONE
+10. Arabic translation: Employees module (photo, print, pagination, form, filters, validation) - DONE
+11. Arabic translation: Reports module (dashboard, yearly, YoY, department, overtime/absenteeism, employee history, payslip/Excel) - DONE
+
+Files Modified in Latest Session:
+- config/en.php (added employees, reports, shared format keys)
+- config/ar.php (Arabic translations for above)
+- pages/employees.php (translated form, photo, print, list, filters, pagination, validation)
+- pages/reports.php (translated all report views and dashboard cards)
+
+Pending:
+- Full browser/functional testing (PHP CLI not available in this environment)
+- Optional: translate remaining static country names in employees form
+- Optional: verify period_label localization in payroll reports
+
+Notes:
+- Used t() helper and formatT() for parameterized strings.
+- Localized month names via monthName() helper.
+- Kept translation keys consistent between en.php and ar.php.
+- No PHP syntax checker available locally; files were reviewed visually.

@@ -150,12 +150,15 @@ function calculatePayrollItem(int $employeeId, int $periodId, int $year, int $mo
 
     $allowanceDetails = [];
     $totalAllowances = 0;
+    $fixedAndBasicAllowances = 0;
+    $percentageGrossAllowances = 0;
     foreach ($allowanceRows as $a) {
+        if ($a['calc_type'] === 'percentage_gross') continue;
         $amt = match($a['calc_type']) {
             'percentage_basic' => $basic * $a['amount'] / 100,
             default            => (float) $a['amount'],
         };
-        $totalAllowances += $amt;
+        $fixedAndBasicAllowances += $amt;
         $allowanceDetails[] = ['type' => 'allowance', 'ref_id' => $a['allowance_type_id'], 'name_en' => $a['name_en'], 'name_ar' => $a['name_ar'], 'amount' => $amt];
     }
 
@@ -172,6 +175,16 @@ function calculatePayrollItem(int $employeeId, int $periodId, int $year, int $mo
         $bonusAmt = (float)$bonuses;
     }
 
+    $gross = $basic + $fixedAndBasicAllowances + $bonusAmt;
+
+    foreach ($allowanceRows as $a) {
+        if ($a['calc_type'] !== 'percentage_gross') continue;
+        $amt = round($gross * $a['amount'] / 100, 3);
+        $percentageGrossAllowances += $amt;
+        $allowanceDetails[] = ['type' => 'allowance', 'ref_id' => $a['allowance_type_id'], 'name_en' => $a['name_en'], 'name_ar' => $a['name_ar'], 'amount' => $amt];
+    }
+
+    $totalAllowances = $fixedAndBasicAllowances + $percentageGrossAllowances;
     $gross = $basic + $totalAllowances + $bonusAmt;
 
     // Use job-specific working hours
@@ -385,17 +398,29 @@ function calculatePayrollBatch(array $employeeIds, int $periodId, int $year, int
         $dailyRate = $workDays > 0 ? $basic / $workDays : 0;
 
         $allowanceDetails = [];
-        $totalAllowances = 0;
+        $fixedAndBasicAllowances = 0;
+        $percentageGrossAllowances = 0;
         foreach ($allowanceMap[$empId] ?? [] as $a) {
+            if ($a['calc_type'] === 'percentage_gross') continue;
             $amt = match($a['calc_type']) {
                 'percentage_basic' => $basic * $a['amount'] / 100,
                 default            => (float)$a['amount'],
             };
-            $totalAllowances += $amt;
+            $fixedAndBasicAllowances += $amt;
             $allowanceDetails[] = ['type' => 'allowance', 'ref_id' => $a['allowance_type_id'], 'name_en' => $a['name_en'], 'name_ar' => $a['name_ar'], 'amount' => $amt];
         }
 
         $bonusAmt = $bonusMap[$empId] ?? 0;
+        $gross = $basic + $fixedAndBasicAllowances + $bonusAmt;
+
+        foreach ($allowanceMap[$empId] ?? [] as $a) {
+            if ($a['calc_type'] !== 'percentage_gross') continue;
+            $amt = round($gross * $a['amount'] / 100, 3);
+            $percentageGrossAllowances += $amt;
+            $allowanceDetails[] = ['type' => 'allowance', 'ref_id' => $a['allowance_type_id'], 'name_en' => $a['name_en'], 'name_ar' => $a['name_ar'], 'amount' => $amt];
+        }
+
+        $totalAllowances = $fixedAndBasicAllowances + $percentageGrossAllowances;
         $gross = $basic + $totalAllowances + $bonusAmt;
 
         $att = $attMap[$empId] ?? ['absent_days' => 0, 'late_minutes' => 0, 'overtime_hours' => 0, 'holiday_ot' => 0];

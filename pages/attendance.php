@@ -7,6 +7,14 @@ $deptFilter = get('dept');
 $page = max(1, (int)get('p', 1));
 $perPage = 50; // Show 50 employees per page for attendance
 
+function shiftStartTime(string $shiftType): string {
+    return match($shiftType) {
+        'evening' => '16:00',
+        'night'   => '00:00',
+        default   => '08:00',
+    };
+}
+
 if (isPost()) {
     checkCsrf();
     requireRole('admin', 'manager', 'hr');
@@ -33,9 +41,9 @@ if (isPost()) {
 
             // Auto-calculate status, late, and overtime from check-in/out
             if ($checkIn && $checkOut) {
-                $emp = DB::row("SELECT e.*, jt.working_hours FROM employees e LEFT JOIN job_titles jt ON jt.id=e.job_title_id WHERE e.id=?", [$empId]);
+                $emp = DB::row("SELECT e.*, jt.working_hours, jt.shift_type FROM employees e LEFT JOIN job_titles jt ON jt.id=e.job_title_id WHERE e.id=?", [$empId]);
                 $workHours = (int)($emp['working_hours'] ?? 8);
-                $startTime = '08:00';
+                $startTime = shiftStartTime($emp['shift_type'] ?? 'morning');
                 $endTime = date('H:i', strtotime($startTime . " + {$workHours} hours"));
 
                 $checkInMin = strtotime($date . ' ' . $checkIn) / 60;
@@ -68,7 +76,7 @@ if (isPost()) {
                    VALUES (?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE check_in=VALUES(check_in),check_out=VALUES(check_out),status=VALUES(status),late_minutes=VALUES(late_minutes),overtime_hours=VALUES(overtime_hours)",
                   [$empId, $date, $checkIn, $checkOut, $status, $lateMinutes, $overtimeHours]);
         }
-        setFlash('success', 'Daily attendance saved.');
+        setFlash('success', t('daily_attendance_saved'));
         redirect("index.php?page=attendance&mode=daily&date=$date");
     }
 
@@ -167,7 +175,7 @@ $statusColors = ['present'=>'success','absent'=>'danger','late'=>'warning','half
 <!-- Daily Attendance Entry -->
 <?php
 $dailyDate = get('date', date('Y-m-d'));
-$dailyEmps = DB::rows("SELECT e.id, e.name_en, e.name_ar, e.employee_no, d.name_en as dept_en, jt.working_hours
+$dailyEmps = DB::rows("SELECT e.id, e.name_en, e.name_ar, e.employee_no, d.name_en as dept_en, jt.working_hours, jt.shift_type
     FROM employees e
     LEFT JOIN departments d ON d.id=e.department_id
     LEFT JOIN job_titles jt ON jt.id=e.job_title_id
@@ -215,6 +223,7 @@ if ($dailyDate) {
             <?php foreach ($dailyEmps as $e):
                 $rec = $dailyRecords[$e['id']] ?? [];
                 $workHours = (int)($e['working_hours'] ?? 8);
+                $shiftType = $e['shift_type'] ?? 'morning';
             ?>
             <tr>
               <td>
@@ -232,8 +241,8 @@ if ($dailyDate) {
                 </select>
               </td>
               <td><input type="number" class="form-control form-control-sm" name="daily[<?= $e['id'] ?>][late_minutes]" value="<?= (int)($rec['late_minutes'] ?? 0) ?>" min="0" style="width:80px"></td>
-              <td><input type="number" step="0.5" class="form-control form-select-sm" name="daily[<?= $e['id'] ?>][overtime_hours]" value="<?= (float)($rec['overtime_hours'] ?? 0) ?>" min="0" style="width:80px"></td>
-              <td class="d-none work-hours" data-hours="<?= $workHours ?>"></td>
+              <td><input type="number" step="0.5" class="form-control form-control-sm" name="daily[<?= $e['id'] ?>][overtime_hours]" value="<?= (float)($rec['overtime_hours'] ?? 0) ?>" min="0" style="width:80px"></td>
+              <td class="d-none work-hours" data-hours="<?= $workHours ?>" data-shift="<?= h($shiftType) ?>"></td>
             </tr>
             <?php endforeach; ?>
             <?php if (empty($dailyEmps)): ?>
@@ -254,9 +263,11 @@ function calculateDailyRow(input) {
   const checkIn = row.querySelector('input[type="time"]').value;
   const checkOut = row.querySelectorAll('input[type="time"]')[1].value;
   const workHours = parseInt(row.querySelector('.work-hours').dataset.hours || 8);
+  const shiftType = row.querySelector('.work-hours').dataset.shift || 'morning';
   if (!checkIn || !checkOut) return;
 
-  const startTime = '08:00';
+  const shiftStarts = { evening: '16:00', night: '00:00', morning: '08:00', flexible: '08:00' };
+  const startTime = shiftStarts[shiftType] || '08:00';
   const endTime = new Date('2000-01-01T' + startTime).getTime() + (workHours * 3600000);
   const endTimeStr = new Date(endTime).toTimeString().slice(0, 5);
 

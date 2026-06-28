@@ -1,5 +1,5 @@
 <?php
-$pageTitle = 'Bonuses & Commissions';
+$pageTitle = t('bonuses');
 $subAction = get('sub', 'list');
 
 // Handle POST
@@ -11,7 +11,7 @@ if (isPost()) {
         requireRole('admin', 'manager', 'hr');
         $bonusesTableExists = DB::row("SHOW TABLES LIKE 'bonuses'") !== null;
         if (!$bonusesTableExists) {
-            setFlash('error', 'Bonuses table does not exist. Please run the migration: migrations/add_advanced_features.sql');
+            setFlash('error', t('table_missing') . ' bonuses. ' . t('run_migration'));
             redirect('index.php?page=bonuses');
         }
 
@@ -24,7 +24,7 @@ if (isPost()) {
             'description' => post('description'),
             'status' => 'pending'
         ]);
-        setFlash('success', 'Bonus added successfully.');
+        setFlash('success', t('bonus_added'));
         redirect('index.php?page=bonuses');
     }
 
@@ -36,7 +36,7 @@ if (isPost()) {
             'approved_by' => currentUser()['id'],
             'approved_at' => date('Y-m-d H:i:s')
         ], 'id=?', [$id]);
-        setFlash('success', 'Bonus approved.');
+        setFlash('success', t('bonus_approved'));
         redirect('index.php?page=bonuses');
     }
 
@@ -44,7 +44,7 @@ if (isPost()) {
         requireRole('admin', 'manager');
         $id = (int)post('id');
         DB::update('bonuses', ['status' => 'rejected'], 'id=?', [$id]);
-        setFlash('success', 'Bonus rejected.');
+        setFlash('success', t('bonus_rejected'));
         redirect('index.php?page=bonuses');
     }
 
@@ -55,7 +55,7 @@ if (isPost()) {
             'status' => 'paid',
             'payment_date' => post('payment_date') ?: date('Y-m-d')
         ], 'id=?', [$id]);
-        setFlash('success', 'Bonus marked as paid.');
+        setFlash('success', t('bonus_paid'));
         redirect('index.php?page=bonuses');
     }
 }
@@ -64,7 +64,7 @@ if (isPost()) {
 if ($subAction === 'add') {
     ?>
     <div class="page-header">
-      <h1 class="page-title"><i class="fas fa-gift me-2"></i>Add Bonus</h1>
+      <h1 class="page-title"><i class="fas fa-gift me-2"></i><?= t('add_bonus') ?></h1>
     </div>
     <div class="card card-modern">
       <div class="card-body">
@@ -73,29 +73,29 @@ if ($subAction === 'add') {
           <input type="hidden" name="sub_action" value="add">
           <div class="row g-3">
             <div class="col-md-6">
-              <label class="form-label">Employee</label>
-              <select class="form-select select2-ajax" name="employee_id" required data-placeholder="Search employee...">
+              <label class="form-label"><?= t('employee_name') ?></label>
+              <select class="form-select select2-ajax" name="employee_id" required data-placeholder="<?= t('search_employee') ?>">
                 <option value=""></option>
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label">Bonus Type</label>
+              <label class="form-label"><?= t('bonus_type') ?></label>
               <select class="form-select" name="bonus_type" required>
-                <option value="performance">Performance Bonus</option>
-                <option value="sales_commission">Sales Commission</option>
-                <option value="project_bonus">Project Bonus</option>
-                <option value="signing_bonus">Signing Bonus</option>
-                <option value="referral_bonus">Referral Bonus</option>
-                <option value="year_end_bonus">Year-End Bonus</option>
-                <option value="other">Other</option>
+                <option value="performance"><?= t('performance_bonus') ?></option>
+                <option value="sales_commission"><?= t('sales_commission') ?></option>
+                <option value="project_bonus"><?= t('project_bonus') ?></option>
+                <option value="signing_bonus"><?= t('signing_bonus') ?></option>
+                <option value="referral_bonus"><?= t('referral_bonus') ?></option>
+                <option value="year_end_bonus"><?= t('year_end_bonus') ?></option>
+                <option value="other"><?= t('other') ?></option>
               </select>
             </div>
             <div class="col-md-4">
-              <label class="form-label">Amount</label>
+              <label class="form-label"><?= t('amount') ?></label>
               <input type="number" step="0.001" class="form-control" name="amount" required>
             </div>
             <div class="col-md-4">
-              <label class="form-label">Year</label>
+              <label class="form-label"><?= t('year') ?></label>
               <select class="form-select" name="period_year" required>
                 <?php for($y = date('Y'); $y >= date('Y') - 2; $y--): ?>
                 <option value="<?= $y ?>" <?= $y == date('Y') ? 'selected' : '' ?>><?= $y ?></option>
@@ -103,20 +103,20 @@ if ($subAction === 'add') {
               </select>
             </div>
             <div class="col-md-4">
-              <label class="form-label">Month</label>
+              <label class="form-label"><?= t('month') ?></label>
               <select class="form-select" name="period_month" required>
                 <?php for($m = 1; $m <= 12; $m++): ?>
-                <option value="<?= $m ?>" <?= $m == date('m') ? 'selected' : '' ?>><?= date('F', mktime(0,0,0,$m,1)) ?></option>
+                <option value="<?= $m ?>" <?= $m == date('m') ? 'selected' : '' ?>><?= monthName($m, lang()) ?></option>
                 <?php endfor; ?>
               </select>
             </div>
             <div class="col-12">
-              <label class="form-label">Description</label>
+              <label class="form-label"><?= t('description') ?></label>
               <textarea class="form-control" name="description" rows="3"></textarea>
             </div>
             <div class="col-12">
-              <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Save Bonus</button>
-              <a href="index.php?page=bonuses" class="btn btn-outline-secondary">Cancel</a>
+              <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i><?= t('save') ?></button>
+              <a href="index.php?page=bonuses" class="btn btn-outline-secondary"><?= t('cancel') ?></a>
             </div>
           </div>
         </form>
@@ -142,8 +142,8 @@ if ($bonusesTableExists) {
 }
 ?>
 <div class="page-header d-flex justify-content-between align-items-start">
-  <h1 class="page-title"><i class="fas fa-gift me-2"></i>Bonuses & Commissions</h1>
-  <a href="?page=bonuses&sub=add" class="btn btn-primary"><i class="fas fa-plus me-2"></i>Add Bonus</a>
+  <h1 class="page-title"><i class="fas fa-gift me-2"></i><?= t('bonuses') ?></h1>
+  <a href="?page=bonuses&sub=add" class="btn btn-primary"><i class="fas fa-plus me-2"></i><?= t('add_bonus') ?></a>
 </div>
 
 <div class="card card-modern">
@@ -151,22 +151,22 @@ if ($bonusesTableExists) {
     <table class="table table-hover">
       <thead>
         <tr>
-          <th>Employee</th>
-          <th>Type</th>
-          <th>Amount</th>
-          <th>Period</th>
-          <th>Status</th>
-          <th>Payment Date</th>
-          <th>Actions</th>
+          <th><?= t('employee_name') ?></th>
+          <th><?= t('bonus_type') ?></th>
+          <th><?= t('amount') ?></th>
+          <th><?= t('period') ?></th>
+          <th><?= t('status') ?></th>
+          <th><?= t('payment_date') ?></th>
+          <th><?= t('actions') ?></th>
         </tr>
       </thead>
       <tbody>
         <?php foreach ($bonuses['data'] as $b): ?>
         <tr>
           <td><?= h($b['name_en']) ?> (<?= h($b['employee_no']) ?>)</td>
-          <td><?= ucfirst(str_replace('_', ' ', $b['bonus_type'])) ?></td>
+          <td><?= t($b['bonus_type']) ?></td>
           <td class="fw-bold text-success"><?= money((float)$b['amount']) ?></td>
-          <td><?= date('F Y', mktime(0,0,0,$b['period_month'],1,$b['period_year'])) ?></td>
+          <td><?= monthName((int)$b['period_month'], lang()) . ' ' . $b['period_year'] ?></td>
           <td><?= statusBadge($b['status']) ?></td>
           <td><?= $b['payment_date'] ? fdate($b['payment_date']) : '-' ?></td>
           <td>
@@ -188,21 +188,21 @@ if ($bonusesTableExists) {
               <input type="hidden" name="_csrf" value="<?= csrf() ?>">
               <input type="hidden" name="sub_action" value="mark_paid">
               <input type="hidden" name="id" value="<?= $b['id'] ?>">
-              <button class="btn btn-sm btn-primary" title="Mark as Paid"><i class="fas fa-money-bill"></i></button>
+              <button class="btn btn-sm btn-primary" title="<?= t('mark_paid') ?>"><i class="fas fa-money-bill"></i></button>
             </form>
             <?php endif; ?>
           </td>
         </tr>
         <?php endforeach; ?>
         <?php if (empty($bonuses['data'])): ?>
-        <tr><td colspan="7" class="text-center py-4 text-muted">No bonuses found</td></tr>
+        <tr><td colspan="7" class="text-center py-4 text-muted"><?= t('no_bonuses_found') ?></td></tr>
         <?php endif; ?>
       </tbody>
     </table>
   </div>
   <?php if ($bonuses['last_page'] > 1): ?>
   <div class="card-footer d-flex justify-content-between align-items-center">
-    <small class="text-muted">Showing <?= $bonuses['from'] ?>–<?= $bonuses['to'] ?> of <?= $bonuses['total'] ?></small>
+    <small class="text-muted"><?= formatT('showing_x_of_y', ['from' => $bonuses['from'], 'to' => $bonuses['to'], 'total' => $bonuses['total']]) ?></small>
     <nav><ul class="pagination pagination-sm mb-0">
       <?php for ($pg = 1; $pg <= $bonuses['last_page']; $pg++): ?>
       <li class="page-item <?= $pg == $bonuses['page'] ? 'active' : '' ?>">

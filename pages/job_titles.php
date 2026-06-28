@@ -41,12 +41,12 @@ $editJob = $editId ? DB::row("SELECT * FROM job_titles WHERE id=?", [$editId]) :
           <tr>
             <th><?= t('title_en') ?></th>
             <th><?= t('title_ar') ?></th>
-            <th>Grade</th>
-            <th>Working Hours</th>
-            <th>Shift</th>
-            <th>Salary Range</th>
-            <th>Employees</th>
-            <th>Status</th>
+            <th><?= t('grade') ?></th>
+            <th><?= t('working_hours') ?></th>
+            <th><?= t('shift_type') ?></th>
+            <th><?= t('salary_range') ?></th>
+            <th><?= t('employees') ?></th>
+            <th><?= t('status') ?></th>
             <th></th>
           </tr>
         </thead>
@@ -56,8 +56,8 @@ $editJob = $editId ? DB::row("SELECT * FROM job_titles WHERE id=?", [$editId]) :
             <td><?= h($jt['title_en']) ?></td>
             <td dir="rtl"><?= h($jt['title_ar'] ?? '') ?></td>
             <td><span class="badge bg-secondary"><?= h($jt['grade']) ?></span></td>
-            <td><strong><?= $jt['working_hours'] ?></strong> hrs/day</td>
-            <td><span class="badge bg-info"><?= ucfirst($jt['shift_type']) ?></span></td>
+            <td><strong><?= $jt['working_hours'] ?></strong> <?= t('hours_per_day') ?></td>
+            <td><span class="badge bg-info"><?= t($jt['shift_type']) ?></span></td>
             <td><?= money($jt['min_salary']) ?> - <?= money($jt['max_salary']) ?></td>
             <td><?= $jt['emp_count'] ?></td>
             <td><?= statusBadge($jt['is_active'] ? 'active' : 'inactive') ?></td>
@@ -75,7 +75,7 @@ $editJob = $editId ? DB::row("SELECT * FROM job_titles WHERE id=?", [$editId]) :
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="jobModalTitle"><?= t('add') ?> <?= t('job_titles') ?></h5>
+        <h5 class="modal-title" id="jobModalTitle"><?= t('add_job_title') ?></h5>
         <button class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form method="POST">
@@ -93,29 +93,29 @@ $editJob = $editId ? DB::row("SELECT * FROM job_titles WHERE id=?", [$editId]) :
               <input type="text" class="form-control" name="title_ar" id="jobTitleAr" dir="rtl">
             </div>
             <div class="col-md-6">
-              <label class="form-label">Grade</label>
+              <label class="form-label"><?= t('grade') ?></label>
               <input type="text" class="form-control" name="grade" id="jobGrade" placeholder="e.g. A1, B2">
             </div>
             <div class="col-md-6">
-              <label class="form-label">Working Hours/Day *</label>
+              <label class="form-label"><?= t('working_hours') ?> *</label>
               <input type="number" class="form-control" name="working_hours" id="jobWorkingHours" min="1" max="12" value="8" required>
             </div>
             <div class="col-md-6">
-              <label class="form-label">Shift Type *</label>
+              <label class="form-label"><?= t('shift_type') ?> *</label>
               <select class="form-select" name="shift_type" id="jobShiftType" required>
-                <option value="morning">Morning (8AM-4PM)</option>
-                <option value="evening">Evening (4PM-12AM)</option>
-                <option value="night">Night (12AM-8AM)</option>
-                <option value="flexible">Flexible</option>
+                <option value="morning"><?= t('morning') ?> (8AM-4PM)</option>
+                <option value="evening"><?= t('evening') ?> (4PM-12AM)</option>
+                <option value="night"><?= t('night') ?> (12AM-8AM)</option>
+                <option value="flexible"><?= t('flexible') ?></option>
               </select>
             </div>
             <div class="col-md-6"></div>
             <div class="col-md-6">
-              <label class="form-label">Min Salary</label>
+              <label class="form-label"><?= t('min_salary') ?></label>
               <input type="number" class="form-control" name="min_salary" id="jobMinSalary" step="0.001" min="0" value="0">
             </div>
             <div class="col-md-6">
-              <label class="form-label">Max Salary</label>
+              <label class="form-label"><?= t('max_salary') ?></label>
               <input type="number" class="form-control" name="max_salary" id="jobMaxSalary" step="0.001" min="0" value="0">
             </div>
             <div class="col-12">
@@ -144,7 +144,7 @@ function editJob(j) {
   document.getElementById('jobMinSalary').value = j.min_salary || 0;
   document.getElementById('jobMaxSalary').value = j.max_salary || 0;
   document.getElementById('jobActive').checked = j.is_active == 1;
-  document.getElementById('jobModalTitle').textContent = '<?= t("edit") ?> <?= t("job_titles") ?>';
+  document.getElementById('jobModalTitle').textContent = '<?= t("edit_job_title") ?>';
   new bootstrap.Modal(document.getElementById('jobModal')).show();
 }
 </script>

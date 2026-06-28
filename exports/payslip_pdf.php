@@ -5,11 +5,20 @@
 $periodId = (int)($_GET['period_id'] ?? 0);
 $itemId   = (int)($_GET['item_id']   ?? 0);
 $empId    = (int)($_GET['emp_id']    ?? 0);
+$year     = (int)($_GET['year']      ?? 0);
+$month    = (int)($_GET['month']     ?? 0);
 
 if ($itemId > 0) {
     $item = DB::row("SELECT * FROM payroll_items WHERE id=?", [$itemId]);
 } elseif ($empId > 0 && $periodId > 0) {
     $item = DB::row("SELECT * FROM payroll_items WHERE employee_id=? AND payroll_period_id=?", [$empId, $periodId]);
+} elseif ($empId > 0 && $year > 0 && $month > 0) {
+    $period = DB::row("SELECT * FROM payroll_periods WHERE period_year=? AND period_month=?", [$year, $month]);
+    if ($period) {
+        $item = DB::row("SELECT * FROM payroll_items WHERE employee_id=? AND payroll_period_id=?", [$empId, $period['id']]);
+    } else {
+        $item = null;
+    }
 } elseif ($periodId > 0) {
     // All payslips for period — print all
     $items = DB::rows("SELECT pi.id FROM payroll_items pi WHERE pi.payroll_period_id=?", [$periodId]);

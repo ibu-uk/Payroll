@@ -40,13 +40,6 @@ $employees  = DB::rows("SELECT id,name_en,name_ar FROM employees WHERE status='a
 $leaveTypes = DB::rows("SELECT * FROM leave_types WHERE is_active=1");
 $currentYear = (int)date('Y');
 
-// Ensure leave balances exist for all active employees and leave types
-foreach ($employees as $e) {
-    foreach ($leaveTypes as $lt) {
-        getOrCreateLeaveBalance((int)$e['id'], (int)$lt['id'], $currentYear);
-    }
-}
-
 $filter = get('status','pending');
 $where = $filter ? "WHERE lr.status=?" : "WHERE 1=1";
 $params = $filter ? [$filter] : [];

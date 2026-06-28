@@ -30,8 +30,8 @@ if ($reportType === 'yearly') {
     ?>
     <div class="page-header d-flex justify-content-between align-items-start">
       <div>
-        <h1 class="page-title"><i class="fas fa-chart-line me-2"></i>Yearly Payroll Summary</h1>
-        <p class="text-muted mb-0"><?= $year ?> - Complete breakdown</p>
+        <h1 class="page-title"><i class="fas fa-chart-line me-2"></i><?= t('yearly_payroll_summary') ?></h1>
+        <p class="text-muted mb-0"><?= $year ?> - <?= t('complete_breakdown') ?></p>
       </div>
       <div class="d-flex gap-2">
         <select class="form-select" onchange="location.href='?page=reports&type=yearly&year='+this.value">
@@ -47,7 +47,7 @@ if ($reportType === 'yearly') {
       <div class="col-md-3">
         <div class="card card-modern stat-card">
           <div class="card-body">
-            <div class="stat-label">Total Gross</div>
+            <div class="stat-label"><?= t('total_gross') ?></div>
             <div class="stat-value text-success"><?= money((float)($yearlyTotals['total_gross'] ?? 0)) ?></div>
           </div>
         </div>
@@ -55,7 +55,7 @@ if ($reportType === 'yearly') {
       <div class="col-md-3">
         <div class="card card-modern stat-card">
           <div class="card-body">
-            <div class="stat-label">Total Net</div>
+            <div class="stat-label"><?= t('total_net') ?></div>
             <div class="stat-value text-primary"><?= money((float)($yearlyTotals['total_net'] ?? 0)) ?></div>
           </div>
         </div>
@@ -63,7 +63,7 @@ if ($reportType === 'yearly') {
       <div class="col-md-3">
         <div class="card card-modern stat-card">
           <div class="card-body">
-            <div class="stat-label">Total Deductions</div>
+            <div class="stat-label"><?= t('total_deductions') ?></div>
             <div class="stat-value text-danger"><?= money((float)($yearlyTotals['total_deductions'] ?? 0)) ?></div>
           </div>
         </div>
@@ -71,7 +71,7 @@ if ($reportType === 'yearly') {
       <div class="col-md-3">
         <div class="card card-modern stat-card">
           <div class="card-body">
-            <div class="stat-label">Avg Employees</div>
+            <div class="stat-label"><?= t('avg_employees') ?></div>
             <div class="stat-value"><?= number_format($yearlyTotals['avg_employees'] ?? 0, 0) ?></div>
           </div>
         </div>
@@ -83,12 +83,12 @@ if ($reportType === 'yearly') {
         <table class="table table-hover">
           <thead>
             <tr>
-              <th>Month</th>
-              <th>Status</th>
-              <th>Employees</th>
-              <th>Gross Salary</th>
-              <th>Deductions</th>
-              <th>Net Salary</th>
+              <th><?= t('month') ?></th>
+              <th><?= t('status') ?></th>
+              <th><?= t('employees') ?></th>
+              <th><?= t('gross_salary') ?></th>
+              <th><?= t('total_deductions') ?></th>
+              <th><?= t('net_salary') ?></th>
             </tr>
           </thead>
           <tbody>
@@ -124,8 +124,8 @@ if ($reportType === 'yoy') {
     ?>
     <div class="page-header d-flex justify-content-between align-items-start">
       <div>
-        <h1 class="page-title"><i class="fas fa-chart-bar me-2"></i>Year-over-Year Comparison</h1>
-        <p class="text-muted mb-0">Compare payroll between years</p>
+        <h1 class="page-title"><i class="fas fa-chart-bar me-2"></i><?= t('yoy_comparison') ?></h1>
+        <p class="text-muted mb-0"><?= t('compare_payroll_years') ?></p>
       </div>
       <div class="d-flex gap-2">
         <select class="form-select" onchange="location.href='?page=reports&type=yoy&year1='+this.value+'&year2=<?= $year2 ?>'">
@@ -133,7 +133,7 @@ if ($reportType === 'yoy') {
           <option value="<?= $y['period_year'] ?>" <?= $y['period_year'] == $year1 ? 'selected' : '' ?>><?= $y['period_year'] ?></option>
           <?php endforeach; ?>
         </select>
-        <span class="align-self-center">vs</span>
+        <span class="align-self-center"><?= t('vs') ?></span>
         <select class="form-select" onchange="location.href='?page=reports&type=yoy&year1=<?= $year1 ?>&year2='+this.value">
           <?php foreach ($years as $y): ?>
           <option value="<?= $y['period_year'] ?>" <?= $y['period_year'] == $year2 ? 'selected' : '' ?>><?= $y['period_year'] ?></option>
@@ -148,13 +148,13 @@ if ($reportType === 'yoy') {
         <table class="table table-hover">
           <thead>
             <tr>
-              <th>Month</th>
-              <th><?= $year1 ?> Gross</th>
-              <th><?= $year2 ?> Gross</th>
-              <th>Change</th>
-              <th><?= $year1 ?> Net</th>
-              <th><?= $year2 ?> Net</th>
-              <th>Change</th>
+              <th><?= t('month') ?></th>
+              <th><?= $year1 ?> <?= t('gross_salary') ?></th>
+              <th><?= $year2 ?> <?= t('gross_salary') ?></th>
+              <th><?= t('change') ?></th>
+              <th><?= $year1 ?> <?= t('net_salary') ?></th>
+              <th><?= $year2 ?> <?= t('net_salary') ?></th>
+              <th><?= t('change') ?></th>
             </tr>
           </thead>
           <tbody>
@@ -170,7 +170,7 @@ if ($reportType === 'yoy') {
                 $nChange = $n2 > 0 ? (($n1 - $n2) / $n2 * 100) : 0;
             ?>
             <tr>
-              <td><?= date('F', mktime(0,0,0,$m,1)) ?></td>
+              <td><?= monthName($m, lang()) ?></td>
               <td><?= money($g1) ?></td>
               <td><?= money($g2) ?></td>
               <td class="<?= $gChange >= 0 ? 'text-success' : 'text-danger' ?>"><?= number_format($gChange, 1) ?>%</td>
@@ -206,8 +206,8 @@ if ($reportType === 'employee_history') {
         ?>
         <div class="page-header d-flex justify-content-between align-items-start">
           <div>
-            <h1 class="page-title"><i class="fas fa-history me-2"></i>Employee History</h1>
-            <p class="text-muted mb-0"><?= h($emp['name_en']) ?> - Complete change log</p>
+            <h1 class="page-title"><i class="fas fa-history me-2"></i><?= t('employee_history') ?></h1>
+            <p class="text-muted mb-0"><?= h($emp['name_en']) ?> - <?= t('change_log') ?></p>
           </div>
           <a href="?page=reports&type=employee_history" class="btn btn-outline-secondary"><i class="fas fa-arrow-left"></i></a>
         </div>
@@ -217,31 +217,31 @@ if ($reportType === 'employee_history') {
             <table class="table table-hover">
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Change Type</th>
-                  <th>Field</th>
-                  <th>Old Value</th>
-                  <th>New Value</th>
-                  <th>Changed By</th>
+                  <th><?= t('date') ?></th>
+                  <th><?= t('change_type') ?></th>
+                  <th><?= t('field_name') ?></th>
+                  <th><?= t('old_value') ?></th>
+                  <th><?= t('new_value') ?></th>
+                  <th><?= t('changed_by') ?></th>
                 </tr>
               </thead>
               <tbody>
                 <?php foreach ($history as $h): ?>
                 <tr>
                   <td><?= fdate($h['change_date'], 'Y-m-d H:i') ?></td>
-                  <td><?= ucfirst(str_replace('_', ' ', $h['change_type'])) ?></td>
+                  <td><?= t($h['change_type']) ?></td>
                   <td><?= h($h['field_name'] ?? '-') ?></td>
                   <td><?= h($h['old_value'] ?? '-') ?></td>
                   <td><?= h($h['new_value'] ?? '-') ?></td>
-                  <td><?= h($h['changed_by_name'] ?? 'System') ?></td>
+                  <td><?= h($h['changed_by_name'] ?? t('system')) ?></td>
                 </tr>
                 <?php endforeach; ?>
                 <?php if (empty($history)): ?>
                 <tr><td colspan="6" class="text-center py-4 text-muted">
                   <?php if (!$historyTableExists): ?>
-                    Employee history table does not exist. Please run the migration: migrations/add_advanced_features.sql
+                    <?= t('history_table_missing') ?>
                   <?php else: ?>
-                    No history records found
+                    <?= t('no_history_records') ?>
                   <?php endif; ?>
                 </td></tr>
                 <?php endif; ?>
@@ -254,12 +254,12 @@ if ($reportType === 'employee_history') {
     }
     
     ?>
-    <div class="page-header"><h1 class="page-title"><i class="fas fa-history me-2"></i>Employee History</h1></div>
+    <div class="page-header"><h1 class="page-title"><i class="fas fa-history me-2"></i><?= t('employee_history') ?></h1></div>
     <div class="card card-modern">
       <div class="card-body">
         <div class="mb-3">
-          <label class="form-label">Select Employee</label>
-          <select class="form-select select2-ajax" data-status="all" onchange="location.href='?page=reports&type=employee_history&emp_id='+this.value" data-placeholder="Search employee...">
+          <label class="form-label"><?= t('select_employee') ?></label>
+          <select class="form-select select2-ajax" data-status="all" onchange="location.href='?page=reports&type=employee_history&emp_id='+this.value" data-placeholder="<?= t('search_employee') ?>">
             <option value=""></option>
           </select>
         </div>
@@ -301,8 +301,8 @@ if ($reportType === 'department') {
         ?>
         <div class="page-header d-flex justify-content-between align-items-start">
           <div>
-            <h1 class="page-title"><i class="fas fa-building me-2"></i>Department-wise Payroll</h1>
-            <p class="text-muted mb-0">Breakdown by department</p>
+            <h1 class="page-title"><i class="fas fa-building me-2"></i><?= t('department_wise_payroll') ?></h1>
+            <p class="text-muted mb-0"><?= t('breakdown_by_department') ?></p>
           </div>
           <a href="?page=reports" class="btn btn-outline-secondary"><i class="fas fa-arrow-left"></i></a>
         </div>
@@ -312,14 +312,14 @@ if ($reportType === 'department') {
             <table class="table table-hover">
               <thead>
                 <tr>
-                  <th>Department</th>
-                  <th>Employees</th>
-                  <th>Basic Salary</th>
-                  <th>Allowances</th>
-                  <th>Overtime</th>
-                  <th>Gross</th>
-                  <th>Deductions</th>
-                  <th>Net Salary</th>
+                  <th><?= t('department') ?></th>
+                  <th><?= t('employees') ?></th>
+                  <th><?= t('basic_salary') ?></th>
+                  <th><?= t('allowances') ?></th>
+                  <th><?= t('overtime') ?></th>
+                  <th><?= t('gross_salary') ?></th>
+                  <th><?= t('total_deductions') ?></th>
+                  <th><?= t('net_salary') ?></th>
                 </tr>
               </thead>
               <tbody>
@@ -343,7 +343,7 @@ if ($reportType === 'department') {
         return;
     }
     ?>
-    <div class="page-header"><h1 class="page-title"><i class="fas fa-building me-2"></i>Department-wise Payroll</h1></div>
+    <div class="page-header"><h1 class="page-title"><i class="fas fa-building me-2"></i><?= t('department_wise_payroll') ?></h1></div>
     <div class="card card-modern">
       <div class="card-body">
         <form method="GET">
@@ -351,25 +351,25 @@ if ($reportType === 'department') {
           <input type="hidden" name="type" value="department">
           <div class="row g-3">
             <div class="col-md-6">
-              <label class="form-label">Payroll Period</label>
+              <label class="form-label"><?= t('payroll_period') ?></label>
               <select class="form-select" name="period_id" required>
-                <option value="">Select period...</option>
+                <option value=""><?= t('select_period') ?></option>
                 <?php foreach ($periods as $p): ?>
                 <option value="<?= $p['id'] ?>"><?= h($p['period_label']) ?></option>
                 <?php endforeach; ?>
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label">Department (optional)</label>
+              <label class="form-label"><?= t('department_optional') ?></label>
               <select class="form-select" name="dept_id">
-                <option value="">All Departments</option>
+                <option value=""><?= t('all_departments') ?></option>
                 <?php foreach ($departments as $d): ?>
-                <option value="<?= $d['id'] ?>"><?= h($d['name_en']) ?></option>
+                <option value="<?= $d['id'] ?>"><?= h(lang() === 'ar' ? ($d['name_ar'] ?? $d['name_en']) : $d['name_en']) ?></option>
                 <?php endforeach; ?>
               </select>
             </div>
             <div class="col-12">
-              <button class="btn btn-primary">Generate Report</button>
+              <button class="btn btn-primary"><?= t('generate_report') ?></button>
             </div>
           </div>
         </form>
@@ -402,8 +402,8 @@ if ($reportType === 'overtime_absenteeism') {
     ?>
     <div class="page-header d-flex justify-content-between align-items-start">
       <div>
-        <h1 class="page-title"><i class="fas fa-clock me-2"></i>Overtime & Absenteeism</h1>
-        <p class="text-muted mb-0"><?= date('F Y', mktime(0,0,0,$month,1,$year)) ?></p>
+        <h1 class="page-title"><i class="fas fa-clock me-2"></i><?= t('overtime_absenteeism') ?></h1>
+        <p class="text-muted mb-0"><?= formatT('month_year', ['month' => monthName($month, lang()), 'year' => $year]) ?></p>
       </div>
       <div class="d-flex gap-2">
         <select class="form-select" onchange="location.href='?page=reports&type=overtime_absenteeism&year='+this.value+'&month=<?= $month ?>'">
@@ -413,7 +413,7 @@ if ($reportType === 'overtime_absenteeism') {
         </select>
         <select class="form-select" onchange="location.href='?page=reports&type=overtime_absenteeism&year=<?= $year ?>&month='+this.value">
           <?php for($m = 1; $m <= 12; $m++): ?>
-          <option value="<?= $m ?>" <?= $m == $month ? 'selected' : '' ?>><?= date('F', mktime(0,0,0,$m,1)) ?></option>
+          <option value="<?= $m ?>" <?= $m == $month ? 'selected' : '' ?>><?= monthName($m, lang()) ?></option>
           <?php endfor; ?>
         </select>
         <a href="?page=reports" class="btn btn-outline-secondary"><i class="fas fa-arrow-left"></i></a>
@@ -425,13 +425,13 @@ if ($reportType === 'overtime_absenteeism') {
         <table class="table table-hover">
           <thead>
             <tr>
-              <th>Employee</th>
-              <th>Department</th>
-              <th>Working Days</th>
-              <th>Absent Days</th>
-              <th>Late Minutes</th>
-              <th>Overtime Hours</th>
-              <th>Absenteeism Rate</th>
+              <th><?= t('employee') ?></th>
+              <th><?= t('department') ?></th>
+              <th><?= t('working_days') ?></th>
+              <th><?= t('absent_days') ?></th>
+              <th><?= t('late_minutes') ?></th>
+              <th><?= t('overtime_hours') ?></th>
+              <th><?= t('absenteeism_rate') ?></th>
             </tr>
           </thead>
           <tbody>
@@ -462,129 +462,129 @@ if ($reportType === 'overtime_absenteeism') {
 <div class="row g-4">
   <div class="col-md-6">
     <div class="card card-modern h-100">
-      <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-calendar-alt me-2 text-primary"></i>Yearly Summary</h5></div>
+      <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-calendar-alt me-2 text-primary"></i><?= t('yearly_summary') ?></h5></div>
       <div class="card-body">
-        <p class="text-muted">View complete yearly payroll breakdown with totals and monthly trends.</p>
+        <p class="text-muted"><?= t('complete_breakdown') ?></p>
         <a href="?page=reports&type=yearly" class="btn btn-primary w-100">
-          <i class="fas fa-chart-line me-2"></i>View Yearly Report
+          <i class="fas fa-chart-line me-2"></i><?= t('view_yearly_report') ?>
         </a>
       </div>
     </div>
   </div>
   <div class="col-md-6">
     <div class="card card-modern h-100">
-      <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-chart-bar me-2 text-success"></i>Year-over-Year Comparison</h5></div>
+      <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-chart-bar me-2 text-success"></i><?= t('year_over_year') ?></h5></div>
       <div class="card-body">
-        <p class="text-muted">Compare payroll data between different years to identify trends.</p>
+        <p class="text-muted"><?= t('compare_payroll_years') ?></p>
         <a href="?page=reports&type=yoy" class="btn btn-success w-100">
-          <i class="fas fa-chart-bar me-2"></i>Compare Years
+          <i class="fas fa-chart-bar me-2"></i><?= t('compare_years') ?>
         </a>
       </div>
     </div>
   </div>
   <div class="col-md-6">
     <div class="card card-modern h-100">
-      <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-history me-2 text-warning"></i>Employee History</h5></div>
+      <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-history me-2 text-warning"></i><?= t('employee_history') ?></h5></div>
       <div class="card-body">
-        <p class="text-muted">Track complete employee change history including salary, status, and department changes.</p>
+        <p class="text-muted"><?= t('change_log') ?></p>
         <a href="?page=reports&type=employee_history" class="btn btn-warning w-100">
-          <i class="fas fa-history me-2"></i>View History
+          <i class="fas fa-history me-2"></i><?= t('view_history') ?>
         </a>
       </div>
     </div>
   </div>
   <div class="col-md-6">
     <div class="card card-modern h-100">
-      <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-building me-2 text-info"></i>Department-wise Report</h5></div>
+      <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-building me-2 text-info"></i><?= t('department_report') ?></h5></div>
       <div class="card-body">
-        <p class="text-muted">Analyze payroll costs by department with detailed breakdowns.</p>
+        <p class="text-muted"><?= t('breakdown_by_department') ?></p>
         <a href="?page=reports&type=department" class="btn btn-info w-100">
-          <i class="fas fa-building me-2"></i>Department Report
+          <i class="fas fa-building me-2"></i><?= t('department_report') ?>
         </a>
       </div>
     </div>
   </div>
   <div class="col-md-6">
     <div class="card card-modern h-100">
-      <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-clock me-2 text-warning"></i>Overtime & Absenteeism</h5></div>
+      <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-clock me-2 text-warning"></i><?= t('overtime_absenteeism') ?></h5></div>
       <div class="card-body">
-        <p class="text-muted">Track overtime hours and absenteeism rates by employee and department.</p>
+        <p class="text-muted"><?= t('overtime_absenteeism') ?></p>
         <a href="?page=reports&type=overtime_absenteeism" class="btn btn-warning w-100">
-          <i class="fas fa-clock me-2"></i>Overtime Report
+          <i class="fas fa-clock me-2"></i><?= t('overtime_report') ?>
         </a>
       </div>
     </div>
   </div>
   <div class="col-md-6">
     <div class="card card-modern h-100">
-      <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-file-pdf me-2 text-danger"></i>Payslip PDF</h5></div>
+      <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-file-pdf me-2 text-danger"></i><?= t('payslip_pdf') ?></h5></div>
       <div class="card-body">
-        <p class="text-muted">Generate individual employee payslip in PDF format (Arabic/English bilingual).</p>
+        <p class="text-muted"><?= t('generate_pdf_payslip') ?></p>
         <form action="index.php" method="GET" target="_blank">
           <input type="hidden" name="page" value="export">
           <input type="hidden" name="type" value="payslip_pdf">
           <div class="mb-3"><label class="form-label"><?= t('payroll_period') ?></label>
             <select class="form-select" name="period_id" required>
-              <option value="">Select period...</option>
+              <option value=""><?= t('select_period') ?></option>
               <?php foreach ($periods as $p): ?>
               <option value="<?= $p['id'] ?>"><?= h($p['period_label']) ?></option>
               <?php endforeach; ?>
             </select>
           </div>
-          <div class="mb-3"><label class="form-label"><?= t('employees') ?> (leave blank for all)</label>
-            <select class="form-select select2-ajax" name="emp_id" data-placeholder="Search employee...">
-              <option value="">All Employees</option>
+          <div class="mb-3"><label class="form-label"><?= t('employees') ?> (<?= t('leave_blank_for_all') ?>)</label>
+            <select class="form-select select2-ajax" name="emp_id" data-placeholder="<?= t('search_employee') ?>">
+              <option value=""><?= t('all_employees') ?></option>
             </select>
           </div>
-          <button class="btn btn-danger w-100"><i class="fas fa-file-pdf me-2"></i>Generate PDF Payslip</button>
+          <button class="btn btn-danger w-100"><i class="fas fa-file-pdf me-2"></i><?= t('generate_pdf_payslip') ?></button>
         </form>
       </div>
     </div>
   </div>
   <div class="col-md-6">
     <div class="card card-modern h-100">
-      <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-file-excel me-2 text-success"></i>Payroll Excel Report</h5></div>
+      <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-file-excel me-2 text-success"></i><?= t('payroll_excel_report') ?></h5></div>
       <div class="card-body">
-        <p class="text-muted">Export complete payroll breakdown to Excel with multiple sheets.</p>
+        <p class="text-muted"><?= t('download_excel') ?></p>
         <form action="index.php" method="GET">
           <input type="hidden" name="page" value="export">
           <input type="hidden" name="type" value="payroll_excel">
           <div class="mb-3"><label class="form-label"><?= t('payroll_period') ?></label>
             <select class="form-select" name="period_id" required>
-              <option value="">Select period...</option>
+              <option value=""><?= t('select_period') ?></option>
               <?php foreach ($periods as $p): ?>
               <option value="<?= $p['id'] ?>"><?= h($p['period_label']) ?></option>
               <?php endforeach; ?>
             </select>
           </div>
-          <div class="mb-3"><label class="form-label">Department (optional)</label>
+          <div class="mb-3"><label class="form-label"><?= t('department_optional') ?></label>
             <select class="form-select" name="dept_id">
-              <option value="">All Departments</option>
-              <?php foreach ($departments as $d): ?><option value="<?= $d['id'] ?>"><?= h($d['name_en']) ?></option><?php endforeach; ?>
+              <option value=""><?= t('all_departments') ?></option>
+              <?php foreach ($departments as $d): ?><option value="<?= $d['id'] ?>"><?= h(lang() === 'ar' ? ($d['name_ar'] ?? $d['name_en']) : $d['name_en']) ?></option><?php endforeach; ?>
             </select>
           </div>
-          <button class="btn btn-success w-100"><i class="fas fa-file-excel me-2"></i>Download Excel</button>
+          <button class="btn btn-success w-100"><i class="fas fa-file-excel me-2"></i><?= t('download_excel') ?></button>
         </form>
       </div>
     </div>
   </div>
   <div class="col-md-6">
     <div class="card card-modern h-100">
-      <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-users me-2 text-primary"></i>Employee List</h5></div>
+      <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-users me-2 text-primary"></i><?= t('employee_list') ?></h5></div>
       <div class="card-body">
-        <p class="text-muted">Export full employee directory to Excel including salary info.</p>
+        <p class="text-muted"><?= t('export_employee_list') ?></p>
         <a href="index.php?page=export&type=employees_excel" class="btn btn-primary w-100">
-          <i class="fas fa-file-excel me-2"></i>Export Employee List
+          <i class="fas fa-file-excel me-2"></i><?= t('export_employee_list') ?>
         </a>
       </div>
     </div>
   </div>
   <div class="col-md-6">
     <div class="card card-modern h-100">
-      <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-print me-2 text-secondary"></i>Print Reports</h5></div>
+      <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-print me-2 text-secondary"></i><?= t('print_reports') ?></h5></div>
       <div class="card-body">
-        <p class="text-muted">Quick print any page. Use browser print from any table view.</p>
-        <button onclick="window.print()" class="btn btn-secondary w-100"><i class="fas fa-print me-2"></i>Print Current Page</button>
+        <p class="text-muted"><?= t('print_current_page') ?></p>
+        <button onclick="window.print()" class="btn btn-secondary w-100"><i class="fas fa-print me-2"></i><?= t('print_current_page') ?></button>
       </div>
     </div>
   </div>

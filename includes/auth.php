@@ -59,6 +59,14 @@ function t(string $key): string {
     return $translations[$l][$key] ?? $key;
 }
 
+function formatT(string $key, array $params = []): string {
+    $text = t($key);
+    foreach ($params as $k => $v) {
+        $text = str_replace('{' . $k . '}', $v, $text);
+    }
+    return $text;
+}
+
 function isRtl(): bool { return lang() === 'ar'; }
 
 function toggleLang(): void {

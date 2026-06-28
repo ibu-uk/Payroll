@@ -82,7 +82,7 @@ if (isPost()) {
         // Validate employee_no
         $employeeNo = trim(post('employee_no'));
         if (empty($employeeNo)) {
-            setFlash('error', 'Employee Number is required');
+            setFlash('error', t('employee_number_required'));
             redirect('index.php?page=employees&sub=' . ($id > 0 ? 'edit&id=' . $id : 'add'));
         }
 
@@ -93,7 +93,7 @@ if (isPost()) {
             $existing = DB::row("SELECT id FROM employees WHERE employee_no=?", [$employeeNo]);
         }
         if ($existing) {
-            setFlash('error', 'Employee Number already exists');
+            setFlash('error', t('employee_number_exists'));
             redirect('index.php?page=employees&sub=' . ($id > 0 ? 'edit&id=' . $id : 'add'));
         }
 
@@ -108,7 +108,7 @@ if (isPost()) {
                 $existingEmail = DB::row("SELECT id FROM employees WHERE email=?", [$email]);
             }
             if ($existingEmail) {
-                setFlash('error', 'Email already exists');
+                setFlash('error', t('employee_email_exists'));
                 redirect('index.php?page=employees&sub=' . ($id > 0 ? 'edit&id=' . $id : 'add'));
             }
         }
@@ -136,7 +136,7 @@ if (isPost()) {
             DB::q("DELETE FROM employee_allowances WHERE employee_id=?", [$id]);
         } else {
             $id = DB::insert('employees', $data);
-            logEmployeeChange($id, 'created', null, null, null, 'Employee created');
+            logEmployeeChange($id, 'created', null, null, null, t('employee_created'));
         }
 
         // Save allowances
@@ -180,12 +180,12 @@ if ($subAction === 'add' || $subAction === 'edit') {
     <div class="page-header">
       <div class="d-flex align-items-center gap-3">
         <a href="index.php?page=employees" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left"></i></a>
-        <h1 class="page-title"><?= $subAction === 'add' ? t('add') : t('edit') ?> <?= t('employees') ?></h1>
+        <h1 class="page-title"><?= $subAction === 'add' ? t('add_employee') : t('edit_employee') ?></h1>
       </div>
       <p class="page-sub text-muted"><?= $subAction === 'add' ? t('add_new_employee') : t('edit_employee_details') ?></p>
     </div>
     <?php if ($subAction === 'add' && hasRole('viewer')): ?>
-    <div class="alert alert-warning">Viewers cannot add employees. Please contact an administrator.</div>
+    <div class="alert alert-warning"><?= t('viewers_cannot_add') ?></div>
     <?php else: ?>
     <form method="POST" enctype="multipart/form-data">
       <input type="hidden" name="_csrf" value="<?= csrf() ?>">
@@ -195,13 +195,13 @@ if ($subAction === 'add' || $subAction === 'edit') {
         <!-- Personal Info -->
         <div class="col-lg-8">
           <div class="card card-modern mb-3">
-            <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-user me-2 text-primary"></i><?= t('employee_name') ?></h5></div>
+            <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-user me-2 text-primary"></i><?= t('personal_details') ?></h5></div>
             <div class="card-body">
               <div class="row g-3">
                 <div class="col-md-6">
-                  <label class="form-label fw-500">Employee Number *</label>
+                  <label class="form-label fw-500"><?= t('employee_number') ?> *</label>
                   <input type="text" class="form-control" name="employee_no" value="<?= h($emp['employee_no'] ?? ($subAction === 'add' ? generateEmpNo() : '')) ?>" required <?= $subAction === 'edit' ? 'readonly' : '' ?>>
-                  <small class="text-muted"><?= $subAction === 'edit' ? 'Cannot be changed after creation' : 'Enter unique employee ID (auto-suggested)' ?></small>
+                  <small class="text-muted"><?= $subAction === 'edit' ? t('cannot_change_after_creation') : t('auto_suggested') ?></small>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label fw-500"><?= t('name_en') ?> *</label>
@@ -222,7 +222,7 @@ if ($subAction === 'add' || $subAction === 'edit') {
                 <div class="col-md-4">
                   <label class="form-label fw-500"><?= t('nationality') ?></label>
                   <select class="form-select" name="nationality">
-                    <option value="">-- Select Country --</option>
+                    <option value=""><?= t('select_country') ?></option>
                     <?php
                     $countries = [
                         'Kuwait' => 'Kuwait',
@@ -378,15 +378,15 @@ if ($subAction === 'add' || $subAction === 'edit') {
                   </select>
                 </div>
                 <div class="col-md-4">
-                  <label class="form-label fw-500">Civil ID</label>
+                  <label class="form-label fw-500"><?= t('civil_id') ?></label>
                   <input type="text" class="form-control" name="civil_id" value="<?= h($emp['civil_id'] ?? '') ?>">
                 </div>
                 <div class="col-md-4">
-                  <label class="form-label fw-500">Passport Number</label>
+                  <label class="form-label fw-500"><?= t('passport_no') ?></label>
                   <input type="text" class="form-control" name="passport_no" value="<?= h($emp['passport_no'] ?? '') ?>">
                 </div>
                 <div class="col-md-4">
-                  <label class="form-label fw-500"><?= t('gender') ?? 'Gender' ?></label>
+                  <label class="form-label fw-500"><?= t('gender') ?></label>
                   <select class="form-select" name="gender">
                     <option value="male" <?= ($emp['gender'] ?? '') === 'male' ? 'selected' : '' ?>><?= t('male') ?></option>
                     <option value="female" <?= ($emp['gender'] ?? '') === 'female' ? 'selected' : '' ?>><?= t('female') ?></option>
@@ -414,7 +414,7 @@ if ($subAction === 'add' || $subAction === 'edit') {
 
           <!-- Job Info -->
           <div class="card card-modern mb-3">
-            <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-briefcase me-2 text-success"></i><?= t('job_title') ?></h5></div>
+            <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-briefcase me-2 text-success"></i><?= t('job_details') ?></h5></div>
             <div class="card-body">
               <div class="row g-3">
                 <div class="col-md-6">
@@ -482,7 +482,7 @@ if ($subAction === 'add' || $subAction === 'edit') {
                   </select>
                 </div>
                 <div class="col-5">
-                  <input type="number" class="form-control form-control-sm" name="allowance_amount[]" step="0.001" min="0" value="<?= h($amt) ?>" placeholder="0.000">
+                  <input type="number" class="form-control form-control-sm" name="allowance_amount[]" step="0.001" min="0" value="<?= h($amt) ?>" placeholder="<?= t('allowance_amount') ?>">
                 </div>
                 <div class="col-1">
                   <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.allowance-row').remove()"><i class="fas fa-times"></i></button>
@@ -495,11 +495,11 @@ if ($subAction === 'add' || $subAction === 'edit') {
 
           <!-- Bank Info -->
           <div class="card card-modern mb-3">
-            <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-building-columns me-2 text-info"></i><?= t('bank_name') ?></h5></div>
+            <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-building-columns me-2 text-info"></i><?= t('bank_information') ?></h5></div>
             <div class="card-body">
               <div class="row g-3">
                 <div class="col-md-4"><label class="form-label"><?= t('bank_name') ?></label><input type="text" class="form-control" name="bank_name" value="<?= h($emp['bank_name'] ?? '') ?>"></div>
-                <div class="col-md-4"><label class="form-label"><?= t('bank_account') ?? 'Account No.' ?></label><input type="text" class="form-control" name="bank_account" value="<?= h($emp['bank_account'] ?? '') ?>"></div>
+                <div class="col-md-4"><label class="form-label"><?= t('bank_account') ?></label><input type="text" class="form-control" name="bank_account" value="<?= h($emp['bank_account'] ?? '') ?>"></div>
                 <div class="col-md-4"><label class="form-label"><?= t('iban') ?></label><input type="text" class="form-control" name="iban" value="<?= h($emp['iban'] ?? '') ?>"></div>
               </div>
             </div>
@@ -509,7 +509,7 @@ if ($subAction === 'add' || $subAction === 'edit') {
         <!-- Sidebar -->
         <div class="col-lg-4">
           <div class="card card-modern mb-3">
-            <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-image me-2"></i>Photo</h5></div>
+            <div class="card-header-modern"><h5 class="card-title-modern"><i class="fas fa-image me-2"></i><?= t('photo') ?></h5></div>
             <div class="card-body text-center">
               <?php $photo = $emp['photo'] ?? ''; ?>
               <div class="emp-avatar-upload" id="avatarPreview">
@@ -522,11 +522,11 @@ if ($subAction === 'add' || $subAction === 'edit') {
               <input type="file" class="form-control mt-2" name="photo" accept="image/*" onchange="previewAvatar(this)">
               <?php if ($photo && file_exists(UPLOAD_DIR . 'avatars/' . $photo)): ?>
               <button type="button" class="btn btn-sm btn-outline-danger mt-2" id="deletePhotoBtn">
-                <i class="fas fa-trash me-1"></i>Delete Photo
+                <i class="fas fa-trash me-1"></i><?= t('delete_photo') ?>
               </button>
               <input type="hidden" name="delete_photo" id="deletePhoto" value="0">
               <div id="deletePhotoMsg" class="text-danger small mt-1" style="display:none;">
-                <i class="fas fa-exclamation-triangle"></i> Click Save to confirm deletion
+                <i class="fas fa-exclamation-triangle"></i> <?= t('click_save_confirm_deletion') ?>
               </div>
               <?php endif; ?>
             </div>
@@ -538,7 +538,7 @@ if ($subAction === 'add' || $subAction === 'edit') {
             </div>
           </div>
           <div class="d-grid gap-2">
-            <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save me-2"></i><?= t('save') ?></button>
+            <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save me-2"></i><?= t('save_employee') ?></button>
             <a href="index.php?page=employees" class="btn btn-outline-secondary"><i class="fas fa-times me-2"></i><?= t('cancel') ?></a>
           </div>
         </div>
@@ -555,7 +555,7 @@ if ($subAction === 'add' || $subAction === 'edit') {
             <?php endforeach; ?>
           </select>
         </div>
-        <div class="col-5"><input type="number" class="form-control form-control-sm" name="allowance_amount[]" step="0.001" min="0" value="" placeholder="0.000"></div>
+        <div class="col-5"><input type="number" class="form-control form-control-sm" name="allowance_amount[]" step="0.001" min="0" value="" placeholder="<?= t('allowance_amount') ?>"></div>
         <div class="col-1"><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.allowance-row').remove()"><i class="fas fa-times"></i></button></div>
       </div>
     </template>
@@ -574,7 +574,7 @@ if ($subAction === 'add' || $subAction === 'edit') {
       }
     }
     function deletePhoto() {
-      if (confirm('Are you sure you want to delete this photo?')) {
+      if (confirm('<?= t('delete_photo_confirm') ?>')) {
         document.getElementById('deletePhoto').value = '1';
         document.getElementById('avatarPreview').innerHTML = '<div class="avatar-placeholder"><i class="fas fa-user fa-3x text-muted"></i></div>';
         document.getElementById('deletePhotoMsg').style.display = 'block';
@@ -609,7 +609,7 @@ if ($subAction === 'print') {
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Employee Profile - <?= h($emp['name_en']) ?></title>
+        <title><?= t('employee_profile') ?> - <?= h($emp['name_en']) ?></title>
         <style>
             body { font-family: Arial, sans-serif; padding: 20px; }
             .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
@@ -626,39 +626,39 @@ if ($subAction === 'print') {
     </head>
     <body>
         <div class="header">
-            <h1>Employee Profile</h1>
-            <p>Generated: <?= date('Y-m-d H:i:s') ?></p>
+            <h1><?= t('employee_profile') ?></h1>
+            <p><?= t('generated_at') ?>: <?= date('Y-m-d H:i:s') ?></p>
         </div>
         
         <div class="section">
-            <div class="section-title">Personal Information</div>
-            <div class="row"><div class="label">Employee No:</div><div class="value"><?= h($emp['employee_no']) ?></div></div>
-            <div class="row"><div class="label">Name (EN):</div><div class="value"><?= h($emp['name_en']) ?></div></div>
-            <div class="row"><div class="label">Name (AR):</div><div class="value" dir="rtl"><?= h($emp['name_ar']) ?></div></div>
-            <div class="row"><div class="label">Email:</div><div class="value"><?= h($emp['email']) ?></div></div>
-            <div class="row"><div class="label">Phone:</div><div class="value"><?= h($emp['phone']) ?></div></div>
-            <div class="row"><div class="label">Nationality:</div><div class="value"><?= h($emp['nationality']) ?></div></div>
-            <div class="row"><div class="label">Civil ID:</div><div class="value"><?= h($emp['civil_id']) ?></div></div>
-            <div class="row"><div class="label">Passport No:</div><div class="value"><?= h($emp['passport_no']) ?></div></div>
-            <div class="row"><div class="label">Gender:</div><div class="value"><?= ucfirst($emp['gender']) ?></div></div>
-            <div class="row"><div class="label">Date of Birth:</div><div class="value"><?= fdate($emp['date_of_birth']) ?></div></div>
+            <div class="section-title"><?= t('personal_information') ?></div>
+            <div class="row"><div class="label"><?= t('employee_no') ?>:</div><div class="value"><?= h($emp['employee_no']) ?></div></div>
+            <div class="row"><div class="label"><?= t('name_en') ?>:</div><div class="value"><?= h($emp['name_en']) ?></div></div>
+            <div class="row"><div class="label"><?= t('name_ar') ?>:</div><div class="value" dir="rtl"><?= h($emp['name_ar']) ?></div></div>
+            <div class="row"><div class="label"><?= t('email') ?>:</div><div class="value"><?= h($emp['email']) ?></div></div>
+            <div class="row"><div class="label"><?= t('phone') ?>:</div><div class="value"><?= h($emp['phone']) ?></div></div>
+            <div class="row"><div class="label"><?= t('nationality') ?>:</div><div class="value"><?= h($emp['nationality']) ?></div></div>
+            <div class="row"><div class="label"><?= t('civil_id') ?>:</div><div class="value"><?= h($emp['civil_id']) ?></div></div>
+            <div class="row"><div class="label"><?= t('passport_no') ?>:</div><div class="value"><?= h($emp['passport_no']) ?></div></div>
+            <div class="row"><div class="label"><?= t('gender') ?>:</div><div class="value"><?= t($emp['gender']) ?></div></div>
+            <div class="row"><div class="label"><?= t('date_of_birth') ?>:</div><div class="value"><?= fdate($emp['date_of_birth']) ?></div></div>
         </div>
         
         <div class="section">
-            <div class="section-title">Employment Information</div>
-            <div class="row"><div class="label">Department:</div><div class="value"><?= h($emp['dept_en']) ?></div></div>
-            <div class="row"><div class="label">Job Title:</div><div class="value"><?= h($emp['title_en']) ?></div></div>
-            <div class="row"><div class="label">Employment Type:</div><div class="value"><?= ucfirst($emp['employment_type']) ?></div></div>
-            <div class="row"><div class="label">Hire Date:</div><div class="value"><?= fdate($emp['hire_date']) ?></div></div>
-            <div class="row"><div class="label">Status:</div><div class="value"><?= ucfirst($emp['status']) ?></div></div>
-            <div class="row"><div class="label">Basic Salary:</div><div class="value"><?= money((float)$emp['basic_salary']) ?></div></div>
+            <div class="section-title"><?= t('employment_information') ?></div>
+            <div class="row"><div class="label"><?= t('department') ?>:</div><div class="value"><?= h($emp['dept_en']) ?></div></div>
+            <div class="row"><div class="label"><?= t('job_title') ?>:</div><div class="value"><?= h($emp['title_en']) ?></div></div>
+            <div class="row"><div class="label"><?= t('employment_type') ?>:</div><div class="value"><?= t($emp['employment_type']) ?></div></div>
+            <div class="row"><div class="label"><?= t('hire_date') ?>:</div><div class="value"><?= fdate($emp['hire_date']) ?></div></div>
+            <div class="row"><div class="label"><?= t('status') ?>:</div><div class="value"><?= t($emp['status']) ?></div></div>
+            <div class="row"><div class="label"><?= t('basic_salary') ?>:</div><div class="value"><?= money((float)$emp['basic_salary']) ?></div></div>
         </div>
         
         <?php if ($allowances): ?>
         <div class="section">
-            <div class="section-title">Allowances</div>
+            <div class="section-title"><?= t('allowances') ?></div>
             <table>
-                <tr><th>Type</th><th>Amount</th></tr>
+                <tr><th><?= t('type') ?></th><th><?= t('amount') ?></th></tr>
                 <?php foreach ($allowances as $a): ?>
                 <tr>
                     <td><?= h(lang() === 'ar' ? ($a['name_ar'] ?? $a['name_en']) : $a['name_en']) ?></td>
@@ -670,14 +670,14 @@ if ($subAction === 'print') {
         <?php endif; ?>
         
         <div class="section">
-            <div class="section-title">Bank Information</div>
-            <div class="row"><div class="label">Bank Name:</div><div class="value"><?= h($emp['bank_name']) ?></div></div>
-            <div class="row"><div class="label">Account No:</div><div class="value"><?= h($emp['bank_account']) ?></div></div>
-            <div class="row"><div class="label">IBAN:</div><div class="value"><?= h($emp['iban']) ?></div></div>
+            <div class="section-title"><?= t('bank_information') ?></div>
+            <div class="row"><div class="label"><?= t('bank_name') ?>:</div><div class="value"><?= h($emp['bank_name']) ?></div></div>
+            <div class="row"><div class="label"><?= t('bank_account') ?>:</div><div class="value"><?= h($emp['bank_account']) ?></div></div>
+            <div class="row"><div class="label"><?= t('iban') ?>:</div><div class="value"><?= h($emp['iban']) ?></div></div>
         </div>
         
         <div class="section">
-            <div class="section-title">Notes</div>
+            <div class="section-title"><?= t('notes') ?></div>
             <div><?= nl2br(h($emp['notes'])) ?></div>
         </div>
         
@@ -721,7 +721,7 @@ $emps = DB::paginate(
       <i class="fas fa-file-excel me-1"></i><?= t('export_excel') ?>
     </a>
     <a href="index.php?page=employees&sub=add" class="btn btn-primary btn-sm">
-      <i class="fas fa-plus me-1"></i><?= t('add') ?> <?= t('employees') ?>
+      <i class="fas fa-plus me-1"></i><?= t('add_employee') ?>
     </a>
   </div>
 </div>
@@ -733,7 +733,7 @@ $emps = DB::paginate(
       <input type="hidden" name="page" value="employees">
       <div class="col-md-4">
         <select class="form-select form-select-sm" name="dept" onchange="this.form.submit()">
-          <option value=""><?= t('department') ?> – <?= t('filter') ?></option>
+          <option value=""><?= t('filter_by_department') ?></option>
           <?php foreach ($departments as $d): ?>
           <option value="<?= $d['id'] ?>" <?= $deptFilter == $d['id'] ? 'selected' : '' ?>>
             <?= h(lang() === 'ar' ? ($d['name_ar'] ?? $d['name_en']) : $d['name_en']) ?>
@@ -743,7 +743,7 @@ $emps = DB::paginate(
       </div>
       <div class="col-md-3">
         <select class="form-select form-select-sm" name="status" onchange="this.form.submit()">
-          <option value=""><?= t('status') ?> – All</option>
+          <option value=""><?= t('filter_by_status') ?></option>
           <?php foreach (['active','probation','on_leave','terminated','suspended'] as $s): ?>
           <option value="<?= $s ?>" <?= $statusFilter === $s ? 'selected' : '' ?>><?= t($s) ?></option>
           <?php endforeach; ?>
@@ -753,7 +753,7 @@ $emps = DB::paginate(
         <input type="text" class="form-control form-control-sm" id="empSearch" placeholder="<?= t('search') ?>...">
       </div>
       <div class="col-md-2">
-        <a href="index.php?page=employees" class="btn btn-outline-secondary btn-sm w-100"><?= t('filter') ?> Clear</a>
+        <a href="index.php?page=employees" class="btn btn-outline-secondary btn-sm w-100"><?= t('clear') ?></a>
       </div>
     </form>
   </div>
@@ -821,7 +821,7 @@ $emps = DB::paginate(
   <!-- Pagination -->
   <?php if ($emps['last_page'] > 1): ?>
   <div class="card-footer d-flex justify-content-between align-items-center">
-    <small class="text-muted">Showing <?= $emps['from'] ?>–<?= $emps['to'] ?> of <?= $emps['total'] ?></small>
+    <small class="text-muted"><?= formatT('showing_x_of_y', ['from' => $emps['from'], 'to' => $emps['to'], 'total' => $emps['total']]) ?></small>
     <nav>
       <ul class="pagination pagination-sm mb-0">
         <?php for ($pg = 1; $pg <= $emps['last_page']; $pg++): ?>
@@ -847,13 +847,13 @@ $emps = DB::paginate(
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Generate Payslip</h5>
+        <h5 class="modal-title"><?= t('generate_payslip') ?></h5>
         <button class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="payslipEmpId">
         <div class="mb-3">
-          <label class="form-label">Year</label>
+          <label class="form-label"><?= t('year') ?></label>
           <select class="form-select" id="payslipYear">
             <?php for($y = date('Y'); $y >= date('Y') - 2; $y--): ?>
             <option value="<?= $y ?>" <?= $y == date('Y') ? 'selected' : '' ?>><?= $y ?></option>
@@ -861,17 +861,17 @@ $emps = DB::paginate(
           </select>
         </div>
         <div class="mb-3">
-          <label class="form-label">Month</label>
+          <label class="form-label"><?= t('month') ?></label>
           <select class="form-select" id="payslipMonth">
             <?php for($m = 1; $m <= 12; $m++): ?>
-            <option value="<?= $m ?>" <?= $m == date('m') ? 'selected' : '' ?>><?= date('F', mktime(0,0,0,$m,1)) ?></option>
+            <option value="<?= $m ?>" <?= $m == date('m') ? 'selected' : '' ?>><?= monthName($m, lang()) ?></option>
             <?php endfor; ?>
           </select>
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-primary w-100" onclick="generatePayslip()">
-          <i class="fas fa-file-pdf me-1"></i>Generate Payslip
+          <i class="fas fa-file-pdf me-1"></i><?= t('generate_payslip') ?>
         </button>
       </div>
     </div>
