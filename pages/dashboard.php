@@ -33,6 +33,7 @@ $todayAbsent  = $dashCache['todayAbsent'];
 $todayLate    = $dashCache['todayLate'];
 
 $totalPayroll = $curPeriod ? money((float)$curPeriod['total_net']) : money(0);
+$curM = (int)date('m');
 $chartData = array_reverse($chartData);
 $chartLabels = array_map(fn($r) => monthName((int)$r['period_month'], lang()) . ' ' . $r['period_year'], $chartData);
 $chartValues = array_map(fn($r) => (float)$r['total_net'], $chartData);
