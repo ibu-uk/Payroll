@@ -99,6 +99,36 @@ function deptName(array $dept): string {
     return lang() === 'ar' && !empty($dept['name_ar']) ? $dept['name_ar'] : $dept['name_en'];
 }
 
+// ── Leave balance helpers ───────────────────────────────────────────────────────
+
+function getOrCreateLeaveBalance(int $employeeId, int $leaveTypeId, int $year): array {
+    $balance = DB::row("SELECT * FROM leave_balance WHERE employee_id=? AND leave_type_id=? AND year=?", [$employeeId, $leaveTypeId, $year]);
+    if ($balance) return $balance;
+
+    $leaveType = DB::row("SELECT days_per_year FROM leave_types WHERE id=?", [$leaveTypeId]);
+    $totalDays = (float)($leaveType['days_per_year'] ?? 0);
+    DB::insert('leave_balance', [
+        'employee_id' => $employeeId,
+        'leave_type_id' => $leaveTypeId,
+        'year' => $year,
+        'total_days' => $totalDays,
+        'used_days' => 0
+    ]);
+    return DB::row("SELECT * FROM leave_balance WHERE employee_id=? AND leave_type_id=? AND year=?", [$employeeId, $leaveTypeId, $year]);
+}
+
+function updateLeaveBalance(int $employeeId, int $leaveTypeId, int $year, float $daysDelta): bool {
+    $balance = getOrCreateLeaveBalance($employeeId, $leaveTypeId, $year);
+    $newUsed = max(0, (float)$balance['used_days'] + $daysDelta);
+    DB::update('leave_balance', ['used_days' => $newUsed], 'id=?', [$balance['id']]);
+    return true;
+}
+
+function getLeaveBalance(int $employeeId, int $leaveTypeId, int $year): float {
+    $balance = getOrCreateLeaveBalance($employeeId, $leaveTypeId, $year);
+    return (float)($balance['remaining_days'] ?? 0);
+}
+
 // ── Payroll calculation engine ────────────────────────────────────────────────
 
 function calculatePayrollItem(int $employeeId, int $periodId, int $year, int $month): array {

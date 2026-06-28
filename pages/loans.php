@@ -12,8 +12,7 @@ if (isPost()) {
         $id = DB::insert('loans', [
             'employee_id' => (int)post('employee_id'),
             'loan_amount' => (float)post('loan_amount'),
-            'interest_rate' => (float)post('interest_rate', 0),
-            'total_amount' => (float)post('total_amount'),
+            'total_amount' => (float)post('loan_amount'),
             'installment_amount' => (float)post('installment_amount'),
             'number_of_installments' => (int)post('number_of_installments'),
             'start_date' => post('start_date'),
@@ -73,25 +72,22 @@ if ($subAction === 'add') {
               <label class="form-label">Loan Amount</label>
               <input type="number" step="0.001" class="form-control" name="loan_amount" id="loanAmount" required oninput="calculateLoan()">
             </div>
-            <div class="col-md-4">
-              <label class="form-label">Interest Rate (%)</label>
-              <input type="number" step="0.1" class="form-control" name="interest_rate" id="interestRate" value="0" oninput="calculateLoan()">
-            </div>
-            <div class="col-md-4">
+            <div class="col-md-6">
               <label class="form-label">Number of Installments</label>
               <input type="number" class="form-control" name="number_of_installments" id="numInstallments" required oninput="calculateLoan()">
             </div>
-            <div class="col-md-4">
+            <div class="col-md-6">
               <label class="form-label">Start Date</label>
               <input type="date" class="form-control" name="start_date" required>
             </div>
             <div class="col-md-6">
-              <label class="form-label">Total Amount (with interest)</label>
-              <input type="number" step="0.001" class="form-control" name="total_amount" id="totalAmount" readonly>
-            </div>
-            <div class="col-md-6">
               <label class="form-label">Installment Amount</label>
               <input type="number" step="0.001" class="form-control" name="installment_amount" id="installmentAmount" readonly>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Total Amount</label>
+              <input type="number" step="0.001" class="form-control" id="totalAmount" readonly value="0.000">
+              <small class="text-muted"><?= t('no_interest_kuwait') ?></small>
             </div>
             <div class="col-12">
               <label class="form-label">Reason</label>
@@ -108,13 +104,11 @@ if ($subAction === 'add') {
     <script>
     function calculateLoan() {
       const amount = parseFloat(document.getElementById('loanAmount').value) || 0;
-      const rate = parseFloat(document.getElementById('interestRate').value) || 0;
       const installments = parseInt(document.getElementById('numInstallments').value) || 1;
-      
-      const total = amount + (amount * rate / 100);
-      const installment = total / installments;
-      
-      document.getElementById('totalAmount').value = total.toFixed(3);
+
+      const installment = amount / installments;
+
+      document.getElementById('totalAmount').value = amount.toFixed(3);
       document.getElementById('installmentAmount').value = installment.toFixed(3);
     }
     </script>
@@ -141,7 +135,7 @@ if ($subAction === 'repay') {
           <div class="card-header-modern"><h5 class="card-title-modern">Loan Details</h5></div>
           <div class="card-body">
             <div class="mb-2"><strong>Loan Amount:</strong> <?= money((float)$loan['loan_amount']) ?></div>
-            <div class="mb-2"><strong>Total Amount:</strong> <?= money((float)$loan['total_amount']) ?></div>
+            <div class="mb-2"><strong>Total Amount:</strong> <?= money((float)$loan['total_amount']) ?> <small class="text-muted">(no interest)</small></div>
             <div class="mb-2"><strong>Installment:</strong> <?= money((float)$loan['installment_amount']) ?></div>
             <div class="mb-2"><strong>Paid:</strong> <?= money((float)$loan['amount_paid']) ?></div>
             <div class="mb-2"><strong>Remaining:</strong> <?= money((float)($loan['total_amount'] - $loan['amount_paid'])) ?></div>

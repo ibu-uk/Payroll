@@ -1,5 +1,6 @@
 <?php
 $pageTitle = t('attendance');
+$mode = get('mode', 'monthly');
 $year  = (int)get('year', date('Y'));
 $month = (int)get('month', date('m'));
 $deptFilter = get('dept');
@@ -9,22 +10,85 @@ $perPage = 50; // Show 50 employees per page for attendance
 if (isPost()) {
     checkCsrf();
     requireRole('admin', 'manager', 'hr');
+    $mode = post('mode', 'monthly');
+
+    // Daily attendance entry with check-in/out times
+    if ($mode === 'daily') {
+        $date = post('date');
+        $entries = post('daily', []);
+        foreach ($entries as $empId => $data) {
+            $empId = (int)$empId;
+            if (!$empId) continue;
+
+            $checkIn = $data['check_in'] ?? null;
+            $checkOut = $data['check_out'] ?? null;
+            $status = $data['status'] ?? '';
+            $lateMinutes = (int)($data['late_minutes'] ?? 0);
+            $overtimeHours = (float)($data['overtime_hours'] ?? 0);
+
+            // Skip empty rows
+            if (!$status && !$checkIn && !$checkOut) {
+                continue;
+            }
+
+            // Auto-calculate status, late, and overtime from check-in/out
+            if ($checkIn && $checkOut) {
+                $emp = DB::row("SELECT e.*, jt.working_hours FROM employees e LEFT JOIN job_titles jt ON jt.id=e.job_title_id WHERE e.id=?", [$empId]);
+                $workHours = (int)($emp['working_hours'] ?? 8);
+                $startTime = '08:00';
+                $endTime = date('H:i', strtotime($startTime . " + {$workHours} hours"));
+
+                $checkInMin = strtotime($date . ' ' . $checkIn) / 60;
+                $startMin = strtotime($date . ' ' . $startTime) / 60;
+                $checkOutMin = strtotime($date . ' ' . $checkOut) / 60;
+                $endMin = strtotime($date . ' ' . $endTime) / 60;
+
+                if ($checkInMin > $startMin) {
+                    $lateMinutes = max(0, (int)($checkInMin - $startMin));
+                }
+                if ($checkOutMin > $endMin) {
+                    $overtimeHours = max(0, round(($checkOutMin - $endMin) / 60, 2));
+                }
+
+                if (!$status) {
+                    $status = $lateMinutes > 0 ? 'late' : 'present';
+                }
+            }
+
+            if (!$status) $status = 'present';
+
+            // Check if this date is a holiday
+            $holiday = DB::row("SELECT id FROM holidays WHERE holiday_date=? OR (is_recurring=1 AND MONTH(holiday_date)=? AND DAY(holiday_date)=?)",
+                [$date, substr($date, 5, 2), substr($date, 8, 2)]);
+            if ($holiday && $status === 'present') {
+                $status = 'holiday';
+            }
+
+            DB::q("INSERT INTO attendance (employee_id,attendance_date,check_in,check_out,status,late_minutes,overtime_hours)
+                   VALUES (?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE check_in=VALUES(check_in),check_out=VALUES(check_out),status=VALUES(status),late_minutes=VALUES(late_minutes),overtime_hours=VALUES(overtime_hours)",
+                  [$empId, $date, $checkIn, $checkOut, $status, $lateMinutes, $overtimeHours]);
+        }
+        setFlash('success', 'Daily attendance saved.');
+        redirect("index.php?page=attendance&mode=daily&date=$date");
+    }
+
+    // Monthly grid save
     $rows = post('att', []);
     foreach ($rows as $empId => $dates) {
         foreach ($dates as $date => $data) {
             $status = $data['status'] ?? 'present';
             $late   = (int)($data['late_minutes'] ?? 0);
             $ot     = (float)($data['overtime_hours'] ?? 0);
-            
+
             // Check if this date is a holiday
-            $holiday = DB::row("SELECT id FROM holidays WHERE holiday_date=? OR (is_recurring=1 AND MONTH(holiday_date)=? AND DAY(holiday_date)=?)", 
+            $holiday = DB::row("SELECT id FROM holidays WHERE holiday_date=? OR (is_recurring=1 AND MONTH(holiday_date)=? AND DAY(holiday_date)=?)",
                 [$date, substr($date, 5, 2), substr($date, 8, 2)]);
-            
+
             // If it's a holiday and status is not explicitly set, mark as holiday
             if ($holiday && $status === 'present') {
                 $status = 'holiday';
             }
-            
+
             DB::q("INSERT INTO attendance (employee_id,attendance_date,status,late_minutes,overtime_hours)
                    VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE status=VALUES(status),late_minutes=VALUES(late_minutes),overtime_hours=VALUES(overtime_hours)",
                   [$empId, $date, $status, $late, $ot]);
@@ -89,9 +153,132 @@ $statusColors = ['present'=>'success','absent'=>'danger','late'=>'warning','half
 <div class="page-header d-flex justify-content-between align-items-start">
   <h1 class="page-title"><i class="fas fa-calendar-check me-2"></i><?= t('attendance') ?></h1>
   <div class="d-flex gap-2">
+    <a href="?page=attendance&mode=monthly" class="btn btn-<?= $mode === 'monthly' ? 'primary' : 'outline-secondary' ?> btn-sm">
+      <i class="fas fa-calendar-alt me-1"></i><?= t('monthly_grid') ?>
+    </a>
+    <a href="?page=attendance&mode=daily" class="btn btn-<?= $mode === 'daily' ? 'primary' : 'outline-secondary' ?> btn-sm">
+      <i class="fas fa-clock me-1"></i><?= t('daily_entry') ?>
+    </a>
     <button onclick="window.print()" class="btn btn-outline-secondary btn-sm"><i class="fas fa-print me-1"></i><?= t('print') ?></button>
   </div>
 </div>
+
+<?php if ($mode === 'daily'): ?>
+<!-- Daily Attendance Entry -->
+<?php
+$dailyDate = get('date', date('Y-m-d'));
+$dailyEmps = DB::rows("SELECT e.id, e.name_en, e.name_ar, e.employee_no, d.name_en as dept_en, jt.working_hours
+    FROM employees e
+    LEFT JOIN departments d ON d.id=e.department_id
+    LEFT JOIN job_titles jt ON jt.id=e.job_title_id
+    WHERE e.status IN ('active','probation')
+    ORDER BY e.name_en");
+$dailyRecords = [];
+if ($dailyDate) {
+    $recs = DB::rows("SELECT employee_id, check_in, check_out, status, late_minutes, overtime_hours FROM attendance WHERE attendance_date=?", [$dailyDate]);
+    foreach ($recs as $r) {
+        $dailyRecords[$r['employee_id']] = $r;
+    }
+}
+?>
+<div class="card card-modern mb-3">
+  <div class="card-body py-2">
+    <form method="GET" class="d-flex align-items-center gap-3">
+      <input type="hidden" name="page" value="attendance">
+      <input type="hidden" name="mode" value="daily">
+      <label class="form-label mb-0"><strong><?= t('date') ?>:</strong></label>
+      <input type="date" class="form-control form-control-sm w-auto" name="date" value="<?= h($dailyDate) ?>" onchange="this.form.submit()">
+    </form>
+  </div>
+</div>
+
+<form method="POST">
+  <input type="hidden" name="_csrf" value="<?= csrf() ?>">
+  <input type="hidden" name="mode" value="daily">
+  <input type="hidden" name="date" value="<?= h($dailyDate) ?>">
+  <div class="card card-modern">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-dark">
+            <tr>
+              <th><?= t('employee_name') ?></th>
+              <th><?= t('department') ?></th>
+              <th><?= t('check_in') ?></th>
+              <th><?= t('check_out') ?></th>
+              <th><?= t('status') ?></th>
+              <th><?= t('late_minutes') ?></th>
+              <th><?= t('overtime_hours') ?></th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($dailyEmps as $e):
+                $rec = $dailyRecords[$e['id']] ?? [];
+                $workHours = (int)($e['working_hours'] ?? 8);
+            ?>
+            <tr>
+              <td>
+                <strong><?= h(lang() === 'ar' ? ($e['name_ar'] ?: $e['name_en']) : $e['name_en']) ?></strong>
+                <small class="text-muted d-block"><?= h($e['employee_no']) ?></small>
+              </td>
+              <td><?= h($e['dept_en'] ?? '-') ?></td>
+              <td><input type="time" class="form-control form-control-sm" name="daily[<?= $e['id'] ?>][check_in]" value="<?= h($rec['check_in'] ?? '') ?>" onchange="calculateDailyRow(this)"></td>
+              <td><input type="time" class="form-control form-control-sm" name="daily[<?= $e['id'] ?>][check_out]" value="<?= h($rec['check_out'] ?? '') ?>" onchange="calculateDailyRow(this)"></td>
+              <td>
+                <select class="form-select form-select-sm" name="daily[<?= $e['id'] ?>][status]">
+                  <?php foreach ($statuses as $s): ?>
+                  <option value="<?= $s ?>" <?= ($rec['status'] ?? '') === $s ? 'selected' : '' ?>><?= t($s) ?></option>
+                  <?php endforeach; ?>
+                </select>
+              </td>
+              <td><input type="number" class="form-control form-control-sm" name="daily[<?= $e['id'] ?>][late_minutes]" value="<?= (int)($rec['late_minutes'] ?? 0) ?>" min="0" style="width:80px"></td>
+              <td><input type="number" step="0.5" class="form-control form-select-sm" name="daily[<?= $e['id'] ?>][overtime_hours]" value="<?= (float)($rec['overtime_hours'] ?? 0) ?>" min="0" style="width:80px"></td>
+              <td class="d-none work-hours" data-hours="<?= $workHours ?>"></td>
+            </tr>
+            <?php endforeach; ?>
+            <?php if (empty($dailyEmps)): ?>
+            <tr><td colspan="7" class="text-center py-4 text-muted"><?= t('no_active_employees') ?></td></tr>
+            <?php endif; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card-footer d-flex justify-content-end">
+      <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i><?= t('save_daily_attendance') ?></button>
+    </div>
+  </div>
+</form>
+<script>
+function calculateDailyRow(input) {
+  const row = input.closest('tr');
+  const checkIn = row.querySelector('input[type="time"]').value;
+  const checkOut = row.querySelectorAll('input[type="time"]')[1].value;
+  const workHours = parseInt(row.querySelector('.work-hours').dataset.hours || 8);
+  if (!checkIn || !checkOut) return;
+
+  const startTime = '08:00';
+  const endTime = new Date('2000-01-01T' + startTime).getTime() + (workHours * 3600000);
+  const endTimeStr = new Date(endTime).toTimeString().slice(0, 5);
+
+  const date = '2000-01-01';
+  const checkInMin = new Date(date + 'T' + checkIn).getTime() / 60000;
+  const startMin = new Date(date + 'T' + startTime).getTime() / 60000;
+  const checkOutMin = new Date(date + 'T' + checkOut).getTime() / 60000;
+  const endMin = new Date(date + 'T' + endTimeStr).getTime() / 60000;
+
+  let late = 0, ot = 0;
+  if (checkInMin > startMin) late = Math.round(checkInMin - startMin);
+  if (checkOutMin > endMin) ot = Math.round((checkOutMin - endMin) / 60 * 10) / 10;
+
+  row.querySelector('input[name$="[late_minutes]"]').value = late;
+  row.querySelector('input[name$="[overtime_hours]"]').value = ot;
+  const statusSelect = row.querySelector('select[name$="[status]"]');
+  if (statusSelect.value === 'present' || statusSelect.value === '') {
+    statusSelect.value = late > 0 ? 'late' : 'present';
+  }
+}
+</script>
+<?php return; endif; ?>
 
 <!-- Month navigation -->
 <div class="card card-modern mb-3">

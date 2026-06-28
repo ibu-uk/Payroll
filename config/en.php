@@ -91,10 +91,16 @@ return [
   'absent'        => 'Absent',
   'late'          => 'Late',
   'half_day'      => 'Half Day',
+  'leave'         => 'Leave',
+  'holiday'       => 'Holiday',
   'check_in'      => 'Check In',
   'check_out'     => 'Check Out',
   'late_minutes'  => 'Late (min)',
   'overtime_hours'=> 'Overtime (hrs)',
+  'monthly_grid'  => 'Monthly Grid',
+  'daily_entry'   => 'Daily Entry',
+  'save_daily_attendance' => 'Save Daily Attendance',
+  'no_active_employees'   => 'No active employees found',
 
   // Leave
   'leave_type'    => 'Leave Type',
@@ -107,6 +113,10 @@ return [
   'rejected'      => 'Rejected',
   'leave_balance' => 'Leave Balance',
   'remaining'     => 'Remaining',
+  'used'          => 'Used',
+  'of'            => 'of',
+  'select_emp_leave_type' => 'Select employee and leave type',
+  'days_per_year' => 'days/year',
 
   // Dashboard
   'payroll_summary'  => 'Payroll Summary',
@@ -155,7 +165,8 @@ return [
   'approve'        => 'Approve',
   'reject'         => 'Reject',
   'mark_paid'      => 'Mark as Paid',
-  
+  'no_interest_kuwait' => 'No interest applied (Kuwait)',
+
   // Gratuity
   'gratuity'       => 'Gratuity / End of Service',
   'calculate_gratuity' => 'Calculate Gratuity',

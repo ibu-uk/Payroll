@@ -87,10 +87,16 @@ return [
   'absent'         => 'غائب',
   'late'           => 'متأخر',
   'half_day'       => 'نصف يوم',
+  'leave'          => 'إجازة',
+  'holiday'        => 'عطلة',
   'check_in'       => 'وقت الحضور',
   'check_out'      => 'وقت الانصراف',
   'late_minutes'   => 'التأخر (دقيقة)',
   'overtime_hours' => 'عمل إضافي (ساعة)',
+  'monthly_grid'   => 'الشبكة الشهرية',
+  'daily_entry'    => 'إدخال يومي',
+  'save_daily_attendance' => 'حفظ الحضور اليومي',
+  'no_active_employees'   => 'لا يوجد موظفون نشطون',
 
   'leave_type'      => 'نوع الإجازة',
   'start_date'      => 'تاريخ البداية',
@@ -102,6 +108,10 @@ return [
   'rejected'        => 'مرفوض',
   'leave_balance'   => 'رصيد الإجازة',
   'remaining'       => 'المتبقي',
+  'used'            => 'مستخدم',
+  'of'              => 'من',
+  'select_emp_leave_type' => 'اختر موظف ونوع الإجازة',
+  'days_per_year'   => 'يوم/سنة',
 
   'payroll_summary' => 'ملخص الرواتب',
   'dept_breakdown'  => 'توزيع الأقسام',
@@ -147,7 +157,8 @@ return [
   'approve'        => 'اعتماد',
   'reject'         => 'رفض',
   'mark_paid'      => 'تحديد كمدفوع',
-  
+  'no_interest_kuwait' => 'لا يتم تطبيق الفائدة (الكويت)',
+
   // Gratuity
   'gratuity'       => 'مكافأة نهاية الخدمة',
   'calculate_gratuity' => 'حساب المكافأة',

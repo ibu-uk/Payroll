@@ -14,17 +14,39 @@ if (isPost()) {
         setFlash('success', t('saved_success'));
     } elseif ($sub === 'approve') {
         requireRole('admin', 'manager', 'hr');
-        DB::update('leave_requests',['status'=>'approved','approved_by'=>currentUser()['id'],'approved_at'=>date('Y-m-d H:i:s')],'id=?',[(int)post('id')]);
+        $reqId = (int)post('id');
+        $req = DB::row("SELECT * FROM leave_requests WHERE id=?", [$reqId]);
+        if ($req && $req['status'] !== 'approved') {
+            $year = (int)date('Y', strtotime($req['start_date']));
+            updateLeaveBalance($req['employee_id'], $req['leave_type_id'], $year, (float)$req['days']);
+        }
+        DB::update('leave_requests',['status'=>'approved','approved_by'=>currentUser()['id'],'approved_at'=>date('Y-m-d H:i:s')],'id=?',[$reqId]);
         setFlash('success', t('approved_status'));
     } elseif ($sub === 'reject') {
         requireRole('admin', 'manager', 'hr');
-        DB::update('leave_requests',['status'=>'rejected','rejection_reason'=>post('reason')],'id=?',[(int)post('id')]);
+        $reqId = (int)post('id');
+        $req = DB::row("SELECT * FROM leave_requests WHERE id=?", [$reqId]);
+        if ($req && $req['status'] === 'approved') {
+            // Restore balance if it was previously approved
+            $year = (int)date('Y', strtotime($req['start_date']));
+            updateLeaveBalance($req['employee_id'], $req['leave_type_id'], $year, -1 * (float)$req['days']);
+        }
+        DB::update('leave_requests',['status'=>'rejected','rejection_reason'=>post('reason')],'id=?',[$reqId]);
         setFlash('success', t('rejected'));
     }
     redirect('index.php?page=leaves');
 }
 $employees  = DB::rows("SELECT id,name_en,name_ar FROM employees WHERE status='active' ORDER BY name_en LIMIT 200");
 $leaveTypes = DB::rows("SELECT * FROM leave_types WHERE is_active=1");
+$currentYear = (int)date('Y');
+
+// Ensure leave balances exist for all active employees and leave types
+foreach ($employees as $e) {
+    foreach ($leaveTypes as $lt) {
+        getOrCreateLeaveBalance((int)$e['id'], (int)$lt['id'], $currentYear);
+    }
+}
+
 $filter = get('status','pending');
 $where = $filter ? "WHERE lr.status=?" : "WHERE 1=1";
 $params = $filter ? [$filter] : [];
@@ -141,7 +163,7 @@ if ($balanceTableExists) {
         </div>
         <div class="mb-3"><label class="form-label"><?= t('leave_type') ?></label>
           <select class="form-select" name="leave_type_id" id="leaveTypeSelect" required onchange="updateLeaveBalance()">
-            <?php foreach ($leaveTypes as $lt): ?><option value="<?= $lt['id'] ?>" data-days="<?= $lt['days_per_year'] ?>"><?= h(lang()==='ar'?($lt['name_ar']?:$lt['name_en']):$lt['name_en']) ?> (<?= $lt['days_per_year'] ?> days/year)</option><?php endforeach; ?>
+            <?php foreach ($leaveTypes as $lt): ?><option value="<?= $lt['id'] ?>" data-days="<?= $lt['days_per_year'] ?>"><?= h(lang()==='ar'?($lt['name_ar']?:$lt['name_en']):$lt['name_en']) ?> (<?= $lt['days_per_year'] ?> <?= t('days_per_year') ?>)</option><?php endforeach; ?>
           </select>
         </div>
         <div class="row g-2 mb-3">
@@ -150,8 +172,8 @@ if ($balanceTableExists) {
         </div>
         <div class="mb-3">
           <div class="alert alert-info d-flex justify-content-between align-items-center">
-            <span><strong>Leave Balance:</strong> <span id="balanceDisplay">Select employee and leave type</span></span>
-            <span class="badge bg-primary" id="daysBadge">0 days</span>
+            <span><strong><?= t('leave_balance') ?>:</strong> <span id="balanceDisplay"><?= t('select_emp_leave_type') ?></span></span>
+            <span class="badge bg-primary" id="daysBadge">0 <?= t('days') ?></span>
           </div>
         </div>
         <div class="mb-3"><label class="form-label"><?= t('reason') ?></label><textarea class="form-control" name="reason" rows="3"></textarea></div>
@@ -182,8 +204,8 @@ function updateLeaveBalance() {
   if (empId && leaveTypeId) {
     const balance = getBalance(empId, leaveTypeId);
     document.getElementById('balanceDisplay').textContent =
-      `${balance.remaining} remaining of ${balance.total} days`;
-    document.getElementById('daysBadge').textContent = `${balance.used} used`;
+      `${balance.remaining} <?= t('remaining') ?> <?= t('of') ?> ${balance.total} <?= t('days') ?>`;
+    document.getElementById('daysBadge').textContent = `${balance.used} <?= t('used') ?>`;
   }
 }
 
@@ -192,7 +214,7 @@ function calculateDays() {
   const end = document.getElementById('endDate').value;
   if (start && end) {
     const diff = Math.round((new Date(end) - new Date(start)) / 86400000) + 1;
-    document.getElementById('daysBadge').textContent = `${diff} days`;
+    document.getElementById('daysBadge').textContent = `${diff} <?= t('days') ?>`;
   }
 }
 
